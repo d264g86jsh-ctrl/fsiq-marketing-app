@@ -1,0 +1,112 @@
+{
+  "crons": [
+    {
+      "path": "/api/agents/run?agent=sync&skill=sheet-sot",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/agents/run?agent=cmo&skill=sharepoint-structure-agent",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/agents/run?agent=paid-media&skill=supabase-accuracy-audit",
+      "schedule": "50 5 * * *"
+    },
+    {
+      "path": "/api/agents/run?agent=paid-media&skill=performance-sync",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/agents/run?agent=paid-media&skill=ghl-webhook-summary",
+      "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/agents/run?agent=paid-media&skill=slack-notify",
+      "schedule": "15 6 * * *"
+    },
+    {
+      "path": "/api/agents/run?agent=cmo&skill=cross-agent-audit",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/agents/run?agent=cmo&skill=morning-brief-compiler",
+      "schedule": "15 7 * * *"
+    },
+    {
+      "path": "/api/agents/run?agent=paid-media&skill=pixel-monitor",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/agents/run?agent=paid-media&skill=app-health-monitor",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/agents/run?agent=paid-media&skill=footage-watcher",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/agents/run?agent=seo&skill=rank-tracker",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/agents/run?agent=seo&skill=blog-writer",
+      "schedule": "30 7 * * *"
+    },
+    {
+      "path": "/api/agents/run?agent=seo&skill=gmb-manager",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/agents/run?agent=seo&skill=technical-audit",
+      "schedule": "0 */4 * * *"
+    },
+    {
+      "path": "/api/agents/run?agent=seo&skill=backlink-manager",
+      "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/agents/run?agent=seo&skill=weekly-report",
+      "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/agents/run?agent=organic&skill=content-ideation",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/agents/run?agent=organic&skill=linkedin-writer",
+      "schedule": "0 8 * * 1-5"
+    },
+    {
+      "path": "/api/agents/run?agent=organic&skill=content-calendar",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/agents/run?agent=organic&skill=reporting",
+      "schedule": "30 8 * * 1"
+    },
+    {
+      "path": "/api/agents/run?agent=comms&skill=morning-brief",
+      "schedule": "30 7 * * *"
+    },
+    {
+      "path": "/api/agents/run?agent=comms&skill=triweekly-email",
+      "schedule": "0 9 * * 1,3,5"
+    },
+    {
+      "path": "/api/agents/run?agent=comms&skill=zapier-monitor",
+      "schedule": "30 9 * * *"
+    },
+    {
+      "path": "/api/agents/run?agent=comms&skill=sharepoint-organizer",
+      "schedule": "0 0 * * 0"
+    },
+    {
+      "path": "/api/agents/run?agent=comms&skill=monthly-review",
+      "schedule": "0 7 1 * *"
+    },
+    {
+      "path": "/api/agents/run?agent=comms&skill=leadership-creative-pick",
+      "schedule": "0 16 * * 5"
+    }
+  ]
+}
