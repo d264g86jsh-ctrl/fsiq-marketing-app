@@ -16,14 +16,16 @@
 | pixel-monitor.skill.ts | ✅ Complete |
 | app-health-monitor.skill.ts | ✅ Complete |
 | ads-library-scraper.skill.ts | ✅ Complete (pending Meta App API approval) |
-| script-generator.skill.ts | 🔄 In Progress |
-| campaign-brief-generator.skill.ts | ⏳ Pending |
+| script-generator.skill.ts | ✅ Complete (4-stage pipeline: topic approval → script variations → A/B hook testing → ClickUp + #video-editor on approval) |
 | footage-watcher.skill.ts | ⏳ Pending |
+| nomenclature-updater.skill.ts | ⏳ Pending |
+| script-matcher.skill.ts | ⏳ Pending |
+| campaign-brief-generator.skill.ts | ⏳ Pending |
 | ghl-webhook-summary.skill.ts | ✅ Complete |
 | supabase-accuracy-audit.skill.ts | ✅ Complete |
 | static-creator.skill.ts | ⏳ Pending |
 | slack-notify.skill.ts | ✅ Complete (catch-up fallback) |
-| sharepoint-structure-agent.skill.ts | ⏳ Pending |
+| sharepoint-structure-agent.skill.ts | ✅ Complete (naming validation, subfolder auto-creation, bi-weekly footage check) |
 | paid-media.agent.ts (orchestrator) | ⏳ Pending |
 
 ---

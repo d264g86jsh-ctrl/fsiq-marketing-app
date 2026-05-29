@@ -41,6 +41,10 @@
       "schedule": "*/30 * * * *"
     },
     {
+      "path": "/api/agents/run?agent=paid-media&skill=script-generator",
+      "schedule": "30 9 * * *"
+    },
+    {
       "path": "/api/agents/run?agent=paid-media&skill=footage-watcher",
       "schedule": "0 * * * *"
     },
