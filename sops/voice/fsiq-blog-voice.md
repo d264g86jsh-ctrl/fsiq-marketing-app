@@ -194,8 +194,37 @@ Both closes restate the core value proposition (same results without disruption)
 
 ---
 
+## 11. Podcast Transcript Evidence (Restaurant Unstoppable — Neil Chand, Speaker C)
+
+The blog is brand content, not Neil's personal voice — but it comes from the same knowledge base.
+These patterns confirm the factual anchors and vocabulary that must carry over from his spoken voice.
+
+**Canonical FSIQ description (use verbatim or close to it in introductions):**
+> "we help independent restaurants specifically reduce their food costs by an average of 5 to 7%
+> on a 100 performance based basis"
+
+**Three-phase structure (accurate source for blog how-it-works sections):**
+> "distributor side optimization, manufacturer side — the back end of the invoice — and then
+> auditing and maintaining all that work over time"
+
+**How Neil describes the opportunity (not the threat):**
+> "it's capturing as much of that hidden margin as possible in favor of independent restaurants"
+The blog should frame savings as recoverable, not as losses being suffered. Same Neil logic,
+adapted for formal brand tone.
+
+**Numbers confirmed by transcript:**
+"5 to 7%", "$2B", "2,000+ restaurants", "100 performance based" (meaning 100% performance-based).
+These are the approved formulations. Calculating from them in-text is always wrong.
+
+**Avoided vocabulary (confirmed by transcript — never appeared once):**
+pivotal, transformational, groundbreaking, leverage (as verb), synergy, empower, innovative,
+cutting-edge. Blog content must also avoid these.
+
+---
+
 ## Changelog
 
 | Date | Change |
 |------|--------|
 | May 2026 | Initial version — built from 5 FSIQ blog articles (foodserviceiq.com/blog) |
+| May 2026 | Added Section 11 — Podcast Transcript Evidence from Restaurant Unstoppable |

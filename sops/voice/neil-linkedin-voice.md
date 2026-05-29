@@ -58,7 +58,7 @@ Recurring themes across 16 posts:
 - GPOs vs FoodServiceIQ (how they differ, what GPOs miss)
 - Distributor contract structure (what chain-level MDAs actually contain)
 - Case studies: named clients, specific annualized savings, no disruption
-- Industry events (tariffs, oil prices, James Beard findings) → implications for food costs
+- Industry events (tariffs, oil prices, industry news related to food costs) → implications for food costs
 - Common operator misconceptions ("we already have the best pricing")
 - Cherry-picking SKUs vs consolidated purchasing behavior
 
@@ -176,8 +176,48 @@ Never a hard close. Never "Sign up now." Never urgency.
 
 ---
 
+## 11. Podcast Transcript Evidence (Restaurant Unstoppable — Neil Chand, Speaker C)
+
+These patterns are drawn from Neil's recorded speech, not from LinkedIn posts. They provide
+the calibration baseline for his natural voice before he edits himself for LinkedIn.
+
+**How Neil explains FSIQ without polish:**
+> "what we do is we help independent restaurants specifically reduce their food costs by an
+> average of 5 to 7% on a 100 performance based basis"
+
+> "it's capturing as much of that hidden margin as possible in favor of independent restaurants"
+
+**Three-phase structure (use as a structural anchor in educational posts):**
+> "distributor side optimization, manufacturer side — the back end of the invoice — and then
+> auditing and maintaining all that work over time"
+
+**Natural hedging patterns (preserve when present — do not make Neil sound more certain):**
+> "I don't know the stats on that off the top of my head."
+> "I don't know the solution to that."
+> "I don't think I am." (when pushed to self-describe)
+
+**Natural connectors (approved — do not replace with AI connectors):**
+"and so", "right?", "you know", "I think", "certainly", "effectively", "I mean"
+"moreover", "furthermore", "notably" — never Neil
+
+**How Neil characterizes specific detail:**
+> "there's not a lot of Mikes out there in the world" (credentialing a partner without puffery)
+> "around 40 bucks a case" (specific enough to be credible, approximate because he's not reading a sheet)
+
+**Avoided vocabulary (confirmed by transcript):**
+pivotal, transformational, groundbreaking, leverage (as verb), synergy, empower, innovative,
+cutting-edge. Neil uses none of these. If they appear in a draft, replace or cut.
+
+**Note on LinkedIn vs podcast voice:**
+The podcast voice is more conversational — fragments, "right?", self-corrections.
+LinkedIn is the same mind, edited: formal grammar, no "right?", no fragments, same facts.
+The humanizer should aim for the edited version of the same patterns, not the raw interview style.
+
+---
+
 ## Changelog
 
 | Date | Change |
 |------|--------|
 | May 2026 | Initial version — built from 16 Neil Chand LinkedIn posts (Jan–Apr 2026) |
+| May 2026 | Added Section 11 — Podcast Transcript Evidence from Restaurant Unstoppable |

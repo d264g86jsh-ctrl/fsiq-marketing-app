@@ -66,7 +66,7 @@ All within the FSIQ service domain:
 - Client case studies (Black's BBQ, Thunderdome, Dish Society, Oasis, Jack Stack, BuffBurger)
 - Procurement insight (chain vs independent gap, GPO limitations, distributor pricing structure)
 - Playbook promotion
-- Industry news with procurement implications (tariffs, inflation, James Beard research)
+- Industry news with procurement implications (tariffs, inflation, industry news related to food costs)
 - Client milestones and recognition
 
 Does not cover: team culture, hiring, company news, general restaurant industry trends unrelated to food costs.

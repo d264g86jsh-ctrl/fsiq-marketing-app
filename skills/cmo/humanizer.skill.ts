@@ -43,16 +43,18 @@ ${voiceSop ? `\n## Voice Guide for this content type (${context})\n${voiceSop}` 
 ${text}
 
 ## Instructions
-Follow the 3-step process from the Humanizer SOP exactly:
+Internally apply the 3-step process from the Humanizer SOP (identify patterns → draft rewrite →
+final pass) but do NOT output your reasoning, steps, notes, or corrections.
 
-Step 1: Identify every AI pattern present in the text above.
-Step 2: Write a draft rewrite fixing all flagged patterns.
-Step 3: Final pass — check for remaining em dashes (hard stop), AI vocabulary,
-        "It's not X it's Y" frames, math out loud, fear-mongering.
-        Verify it sounds like Neil talking to an independent restaurant operator.
+Final pass checks (complete before outputting):
+  - Em dashes (— or –): if any remain, replace before returning (paid-ads → ellipsis; linkedin/blog → period)
+  - Ellipses: if channel is linkedin or blog, every ellipsis must be a period before returning
+  - AI vocabulary, "It's not X it's Y" frames, math out loud, fear-mongering: fix all before returning
+  - Strong specific lines preserved (same concrete claim count as original)
 
-Return ONLY the final rewritten text.
-No commentary. No "here's what I changed." No markup. Just the clean text.`
+Your output must be ONLY the final rewritten text.
+No commentary. No "here's what I changed." No "Wait, correction." No markup. No dashes or section dividers.
+No meta-text of any kind. Just the clean post or script, start to finish, nothing else.`
 
   const result = await askClaude(prompt, 4096)
   return result.trim()

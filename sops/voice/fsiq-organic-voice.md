@@ -184,8 +184,39 @@ That's what happens when food cost stops being something operators have to figur
 
 ---
 
+## 12. Podcast Transcript Evidence (Restaurant Unstoppable — Neil Chand, Speaker C)
+
+The Era 2 organic voice is closest to Neil's spoken analytical voice. These transcript patterns
+confirm what works and what to avoid.
+
+**How Neil describes the hidden margin opportunity (use as anchor for organic captions):**
+> "it's capturing as much of that hidden margin as possible in favor of independent restaurants"
+This is the orientation — opportunity-facing, not threat-facing. Never "you're losing money," always
+"there's margin that can be captured."
+
+**FSIQ's three phases (accurate source for educational posts):**
+> "distributor side optimization, manufacturer side — the back end of the invoice — and then
+> auditing and maintaining all that work over time"
+Educational posts can use this structure to explain the process without over-explaining.
+
+**How Neil talks about specific operators without puffery:**
+> "there's not a lot of Mikes out there in the world" (credentialing a specific person by what they know, not their title)
+Named case studies work because of specificity, not because of superlatives.
+
+**How Neil hedges (preserve this in organic content — it sounds real):**
+> "I don't know the stats on that off the top of my head."
+Organic content can admit uncertainty ("In our experience," "In most of the audits we've done")
+rather than stating universal claims. This is more credible than absolutism.
+
+**Avoided vocabulary (confirmed absent from Neil's spoken vocabulary):**
+pivotal, transformational, groundbreaking, leverage (as verb), synergy, empower, innovative.
+None of these should appear in Era 2 organic content.
+
+---
+
 ## Changelog
 
 | Date | Change |
 |------|--------|
 | May 2026 | Initial version — built from 15 Instagram posts + 3 Facebook posts |
+| May 2026 | Added Section 12 — Podcast Transcript Evidence from Restaurant Unstoppable |

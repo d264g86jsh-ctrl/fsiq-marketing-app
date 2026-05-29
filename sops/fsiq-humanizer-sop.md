@@ -18,16 +18,62 @@ with before/after pairs drawn from FSIQ scripts, company facts, and brand voice 
 
 ## 1. FSIQ Voice Calibration
 
-The target voice has these characteristics, drawn directly from winning scripts and brand voice rules:
+The patterns below are drawn directly from Neil Chand's recorded speech (Restaurant Unstoppable
+podcast, Speaker C). These are not inferred — they are observed patterns from the source.
+Use these as the calibration baseline for all FSIQ content.
 
-**Rhythm:** Conversational. Short sentences when making a point. Longer sentences when building
-a case. Not every sentence the same length. Real pauses — represented by ellipses, never em dashes.
+**How Neil opens an answer or thought:**
+He restates or grounds the question before answering. Short confirmation first, then develops.
+- "Well, in one sense, what we do is we help independent restaurants specifically reduce their
+  food costs by an average of 5 to 7% on a 100 performance based basis."
+- "Yeah, so…"
+- "Right, so what happens is…"
+He does NOT open with "I'm excited to share" or any preamble that isn't the answer.
+
+**Rhythm:** Conversational. Short sentences when landing a point. Longer sentences when building
+context. Not every sentence the same length. Real pauses — how they are represented depends on
+channel (see EM DASHES and ELLIPSIS rules). No em dashes anywhere.
+
+**Natural connectors Neil actually uses (in frequency order):**
+"and so" (most frequent), "right?" (used as a check-in ~15 times in one interview), "you know",
+"I think", "certainly", "effectively", "I mean"
+These connectors are approved. AI connectors like "moreover," "furthermore," "notably," "it's
+worth mentioning" are never Neil.
+
+**Hedging:** Neil admits uncertainty directly. He does not paper over it.
+- "I don't know the stats on that off the top of my head."
+- "I don't know the solution to that."
+- "I don't think I am." (when asked if he's an AI optimist)
+When the content includes hedged or uncertain language, preserve it. Don't make Neil sound
+more confident than he was.
+
+**Numbers:** Specific when facts, hedged when estimates.
+- Specific: "5 to 7%", "$180,000", "18%", "around 40 bucks a case"
+- Estimated: "maybe 20 locations" (uses "maybe" explicitly when estimating)
+Neil never rounds specific facts. He does not calculate in the text.
+
+**How Neil describes FSIQ (verbatim from transcript):**
+- "what we do is we help independent restaurants specifically reduce their food costs by an
+  average of 5 to 7% on a 100 performance based basis"
+- "it's capturing as much of that hidden margin as possible in favor of independent restaurants"
+- Three phases: "distributor side optimization, manufacturer side — the back end of the invoice —
+  and then auditing and maintaining all that work over time"
+These are the approved formulations. Paraphrase degrades them.
+
+**What Neil never says:**
+pivotal, transformational, groundbreaking, innovative, cutting-edge, leverage (as a verb),
+synergy, empower, showcase, underscore, testament, foster, delve, garner, vibrant, landscape
+(abstract), robust, comprehensive. If any of these appear, replace or cut.
+
+**Human moments to preserve:**
+When content has self-corrections, admissions of uncertainty, or conversational asides —
+keep them. These are the markers of a real person, not a press release.
+- "To be clear, I'm not a restaurant owner, but…"
+- "And look, I'll be honest…"
+- "I'm not envisioning a world where AI is doing everything for us."
 
 **Tone:** Smart operator talking to another smart operator. Direct and confident. Never salesy,
 never polished, never corporate. Casual but professional.
-
-**Numbers:** Specific, not calculated. "$264k saved" not "$264,000 per year in savings — that's
-$22,000 per month." Stats as proof points ("2,000 restaurants," "$2B buying power"), not math.
 
 **CTA:** Low pressure. "So check out the link below… it's completely free… so yeah, check it out."
 Never urgency. Never "don't miss this." Never "limited spots."
@@ -180,16 +226,52 @@ Vague upbeat endings that could apply to any company.
 
 ---
 
-### EM DASHES — Hard Rule
-No em dashes (—) anywhere in FSIQ content. Use ellipses for pauses and connective tissue.
-Also catch spaced em dashes ( — ) and double hyphens ( -- ).
+### EM DASHES — Hard Stop for ALL Channels
+No em dashes (—) anywhere in FSIQ content, across every channel. Also catch spaced em dashes ( — ),
+en dashes ( – ), and double hyphens ( -- ). No exceptions.
+
+How to replace depends on channel:
+
+| Channel | Replace em dash with |
+|---------|---------------------|
+| Paid Ads | Ellipsis (`…`) — preserves Neil's conversational pause |
+| Neil LinkedIn | Period. Restructure as two sentences if needed. |
+| FSIQ Company LinkedIn | Period. Restructure as two sentences if needed. |
+| Blog | Period or restructure. |
+| Organic (Instagram/Facebook) | Ellipsis OR period — match surrounding rhythm |
+| Email | Period or restructure. |
 
 ❌ "No changes to your distributors — and no upfront cost."
 ❌ "We found $264,000 in savings — and that was just the first audit."
-✅ "No changes to your distributors… and no upfront cost."
-✅ "We found $264,000 in savings… and that was just the first audit."
+
+✅ Paid Ads: "No changes to your distributors… and no upfront cost."
+✅ LinkedIn / Blog: "No changes to your distributors. No upfront cost."
 
 Before returning any rewrite, scan for `—` and `–`. Any hit means the draft is not done.
+
+---
+
+### ELLIPSIS USAGE — Channel-Specific
+Ellipses are a voice signature for paid ads and some organic content. They are wrong for LinkedIn
+and blog. Using ellipses in a LinkedIn post makes it sound like an ad, not a professional post.
+
+| Channel | Ellipsis rule |
+|---------|--------------|
+| Paid Ads | ✅ Use freely — Neil's natural pause and connective tissue |
+| Organic (Instagram/Facebook) | ✅ Trailing effect only — end of a paragraph, not mid-sentence |
+| Neil LinkedIn | ❌ Use periods. Full stops. No ellipses anywhere. |
+| FSIQ Company LinkedIn | ❌ Use periods. Full stops. No ellipses anywhere. |
+| Blog | ❌ Use periods. No ellipses. |
+| Email | ❌ Use periods. No ellipses. |
+
+❌ LinkedIn with ellipsis (wrong):
+"Most operators have never seen a chain-level contract… and that's the entire problem."
+
+✅ LinkedIn with period (correct):
+"Most operators have never seen a chain-level contract. That is the entire problem."
+
+If the original draft has an ellipsis in a LinkedIn or blog post, replace it with a period.
+Do not preserve it "because it sounds like Neil" — it doesn't sound like Neil on LinkedIn.
 
 ---
 
@@ -241,8 +323,9 @@ These are signs of real FSIQ writing. Do not flatten them:
   "$520k for the Cincinnati group," "$427k for the Austin BBQ operator." These are proof points,
   not puffery. Keep them exact.
 
-- **Ellipses as breathing room.** The ellipsis is Neil's natural pause. "So yeah… check it out."
-  "No changes to your distributors… no changes to your ingredients…" Keep them.
+- **Ellipses as breathing room — paid ads and organic only.** The ellipsis is Neil's natural pause
+  in video scripts and organic posts. "So yeah… check it out." Keep them in those channels.
+  For LinkedIn and blog: replace every ellipsis with a period. See ELLIPSIS USAGE rule above.
 
 - **"So yeah, check it out" and similar low-pressure sign-offs.** This is a signature. Do not
   upgrade it to something polished.
@@ -259,6 +342,15 @@ These are signs of real FSIQ writing. Do not flatten them:
 - **The founder credential stated plainly.** "Former COO of Sysco. Former President of PFG."
   Short. Factual. Do not add framing like "boasting an impressive background."
 
+- **Strong specific lines — preserve exactly.** When the draft contains a short, concrete,
+  specific sentence that says something precise and non-obvious, do not consolidate or delete
+  it during humanization. These are the sentences that perform. Examples of what to keep:
+  "Loyalty, in this context, can work in one direction." /
+  "The structure rewards the distributor, not the operator." /
+  "Preferred pricing is only meaningful when you know what you're being compared to."
+  If a sentence is specific, states a clear mechanism, and has no AI vocabulary — keep it
+  verbatim. Humanization must not reduce the number of distinct, concrete points in the draft.
+
 ---
 
 ## 4. Process
@@ -273,11 +365,17 @@ where possible. The rewrite should cover the same ground as the original — if 
 four paragraphs, the rewrite has four paragraphs.
 
 **Step 3 — Final pass.** Check for:
-- Any remaining em dashes (`—` or `–`) → hard stop, must fix
+- **Em dashes** (`—` or `–`): hard stop — scan the full text. One hit means the draft is not done.
+  Replace per the channel rule (paid ads → ellipsis; LinkedIn/blog → period/restructure).
+- **Ellipses** (`…`): if channel is LinkedIn or blog, every ellipsis must become a period.
+  If channel is paid ads or organic, ellipses are correct — keep them.
 - Any remaining AI vocabulary (pivotal, vibrant, testament, etc.)
 - Any remaining "It's not X, it's Y" frames
 - Any remaining math out loud
 - Any remaining fear-mongering or adversarial distributor language
+- **Strong specific lines preserved:** confirm the rewrite contains the same number of distinct
+  concrete claims as the original. If a specific mechanism or named insight was in the draft,
+  it must still be in the rewrite — not merged, softened, or dropped.
 - Does it sound like Neil talking to an operator? Read it aloud. If it sounds like a press
   release, it's not done.
 
@@ -382,3 +480,5 @@ Formal, third-person brand voice. SEO-optimized titles and H2 headers. Short dec
 | May 2026 | Initial version — patterns drawn from humanizer skill, all examples recontextualized to FSIQ |
 | May 2026 | Replace synthesized examples with real lines from FSIQ scripting doc (AD-07, AD-09, Dollar Saved ad, Rob Tier Ad, High Ticket Podcast, Success Rate Ad); add DOWNSTREAM OUTCOMES pattern |
 | May 2026 | Add Section 5 — Channel-Specific Voice Examples built from real Instagram, LinkedIn (Neil + FSIQ), and blog content |
+| May 2026 | Fix em dash rule: hard stop ALL channels with channel-specific replacement (paid ads → ellipsis, LinkedIn/blog → period); add ELLIPSIS USAGE channel rules; update Step 3 checklist; add PRESERVE STRONG SPECIFIC LINES rule |
+| May 2026 | Rebuild Section 1 (FSIQ Voice Calibration) from Restaurant Unstoppable podcast transcript (Neil Chand, Speaker C) — patterns are now observed, not inferred |
