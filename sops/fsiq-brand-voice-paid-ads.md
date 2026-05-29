@@ -276,9 +276,27 @@ When generating scripts, **always produce multiple hook variations:**
 | "Don't miss this" / "Limited spots" | "Check it out… no strings attached" |
 | Em dashes | Ellipses |
 | "Not A, not B, not C" | Positive reframe of each point |
+| "It's not just X, it's Y" constructions | The positive statement only (see rule below) |
 | Downstream outcomes (new locations, team bonuses) | The savings number itself |
 | Jackson-style third-party host | Neil or Rob only |
 | VSL-style long intro | Open in media res, no warmup |
+
+### ❌ NO "IT'S NOT THIS, IT'S THAT" CONSTRUCTIONS — Hard Stop
+
+Never frame value by negating what you are not, then asserting what you are.
+No exceptions. This pattern sounds like marketing copy. Neil talks like an operator, not a brand strategist.
+The positive version is always stronger and more direct.
+
+❌ "It's not just about savings, it's about giving your restaurant the same leverage as a national chain"
+❌ "This isn't just a playbook, it's a roadmap to national chain-level pricing"
+❌ "It's not just about food cost, it's about leveling the playing field"
+
+✅ Replace with the positive statement only:
+   "This gives your restaurant the same leverage as a national chain."
+   "The playbook shows the exact strategies behind 5–7% savings."
+   "We give independents access to the same pricing infrastructure as national chains."
+
+This rule applies to all FSIQ content — paid ads, organic, LinkedIn, blog. When built, all other voice SOPs should inherit it.
 
 ---
 

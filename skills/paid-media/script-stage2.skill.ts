@@ -5,13 +5,14 @@
 // approve_variation_{pipelineId} → webhook fires Stage 3 (A/B hook generation)
 // edit_variation_{pipelineId}    → webhook opens edit modal
 // skip_variation_{pipelineId}    → status='Killed'
-// SOPs: paid-media, ad-scripting-rules, fsiq-company-profile, fsiq-brand-voice-paid-ads
+// SOPs: paid-media, ad-scripting-rules, fsiq-company-profile, fsiq-brand-voice-paid-ads, fsiq-humanizer-sop
 
 import fs from 'fs'
 import path from 'path'
 import { askClaudeJson } from '../../lib/claude'
 import { supabase } from '../../lib/supabase'
 import { sendBlocks } from '../../lib/slack'
+import { humanize } from '../cmo/humanizer.skill'
 import type { KnownBlock } from '@slack/web-api'
 
 function loadSop(name: string): string {
@@ -167,6 +168,9 @@ Return ONLY a valid JSON array of exactly 2 objects — no preamble, no markdown
     const globalNumber = startGlobalNumber + i
     const conceptId = `FSIQ-VIDEO-AD-${globalNumber}`
 
+    // Humanizer pass — remove AI writing patterns before saving (AGENTS.md rule)
+    const cleanScript = await humanize(v.full_script, 'paid-ads')
+
     const { data: row, error: insertError } = await supabase
       .from('creative_pipeline')
       .insert({
@@ -177,7 +181,7 @@ Return ONLY a valid JSON array of exactly 2 objects — no preamble, no markdown
         hook_type:       v.hook_type,
         awareness_level: v.awareness_level,
         lp_code:         v.suggested_lp,
-        script_draft:    v.full_script,
+        script_draft:    cleanScript,
         duration:        v.estimated_duration,
         status:          'Script Draft',
         is_active:       false,
@@ -192,9 +196,9 @@ Return ONLY a valid JSON array of exactly 2 objects — no preamble, no markdown
     }
 
     const pipelineId = row.id as string
-    const scriptPreview = v.full_script.length > 600
-      ? v.full_script.slice(0, 597) + '…'
-      : v.full_script
+    const scriptPreview = cleanScript.length > 600
+      ? cleanScript.slice(0, 597) + '…'
+      : cleanScript
 
     const blocks: KnownBlock[] = [
       {

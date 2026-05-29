@@ -128,3 +128,48 @@ export async function run(): Promise<SkillOutput> {
 
 Do NOT update this SOP speculatively — only on confirmed data or explicit instruction.
 <!-- END:brand-voice-self-update-rule -->
+
+<!-- BEGIN:humanizer-rule -->
+# HUMANIZER RULE (mandatory for all writing skills)
+
+Any skill that generates text content — scripts, LinkedIn posts, blog drafts, organic captions,
+email copy — must call `humanize()` from `skills/cmo/humanizer.skill.ts` as the **final step**
+before saving to Supabase or posting to Slack.
+
+## Import
+
+```typescript
+import { humanize } from '../cmo/humanizer.skill'
+```
+
+## Context mapping
+
+| Content type | Context arg |
+|---|---|
+| Video ad scripts | `'paid-ads'` |
+| Organic social captions | `'organic'` |
+| LinkedIn posts | `'linkedin'` |
+| Blog / SEO content | `'blog'` |
+| All other written output | `'general'` |
+
+## Required pattern
+
+```typescript
+// Last step before any insert/update that writes generated text
+const cleanText = await humanize(rawText, 'paid-ads')
+// Then save cleanText, not rawText
+```
+
+## SOP pairing
+
+`humanizer.skill.ts` loads `sops/fsiq-humanizer-sop.md` at runtime (always required).
+It also loads the context-specific voice SOP per the SOP ↔ SKILL PAIRING rule above.
+
+## Skills currently integrated
+
+| Skill | Applied to | Context |
+|---|---|---|
+| `script-stage2.skill.ts` | `script_draft` before `creative_pipeline` insert | `'paid-ads'` |
+
+All future writing skills must be added to this table when built.
+<!-- END:humanizer-rule -->
