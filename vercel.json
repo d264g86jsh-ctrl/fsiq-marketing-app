@@ -49,6 +49,10 @@
       "schedule": "0 * * * *"
     },
     {
+      "path": "/api/agents/run?agent=paid-media&skill=nomenclature-updater",
+      "schedule": "5 * * * *"
+    },
+    {
       "path": "/api/agents/run?agent=seo&skill=rank-tracker",
       "schedule": "0 7 * * *"
     },
