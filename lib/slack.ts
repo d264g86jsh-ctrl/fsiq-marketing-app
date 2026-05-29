@@ -98,6 +98,24 @@ export async function updateMessage(channel: string, ts: string, text: string, b
   return client.chat.update({ channel, ts, text, ...(blocks ? { blocks } : {}) })
 }
 
+export async function postThreadReply(
+  channel: ChannelKey | string,
+  threadTs: string,
+  blocks: (Block | KnownBlock)[],
+  fallbackText: string
+) {
+  return client.chat.postMessage({
+    channel: resolveChannel(channel),
+    thread_ts: threadTs,
+    blocks,
+    text: fallbackText,
+  })
+}
+
+export async function openModal(triggerId: string, view: unknown) {
+  return client.views.open({ trigger_id: triggerId, view: view as never })
+}
+
 export async function testConnection() {
   const res = await client.auth.test()
   return { ok: res.ok, botId: res.bot_id, team: res.team, user: res.user }

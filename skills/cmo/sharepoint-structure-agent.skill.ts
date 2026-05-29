@@ -160,6 +160,78 @@ async function validateSubfolders(
   }
 }
 
+// ── Bi-weekly footage check ────────────────────────────────────────────────────
+// Runs on Mondays only (guarded below). Finds concepts with status='Recording Pending'
+// where the Raw Footage folder in SharePoint appears empty and >14 days have passed.
+
+async function runFootageCheck(): Promise<void> {
+  const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+
+  // Concepts approved for recording more than 14 days ago
+  const { data: pendingRows } = await supabase
+    .from('creative_pipeline')
+    .select('id, ad_id, concept_name, global_number, updated_at')
+    .eq('status', 'Recording Pending')
+    .lt('updated_at', cutoff)
+
+  if (!pendingRows || pendingRows.length === 0) return
+
+  const stale: Array<{ conceptId: string; conceptName: string; daysWaiting: number }> = []
+
+  for (const row of pendingRows) {
+    const conceptId = row.ad_id ?? (row.global_number ? `FSIQ-VIDEO-AD-${row.global_number}` : row.id)
+
+    // Check if Raw Footage folder is empty in sharepoint_map
+    const rawFootagePath = `${VIDEO_CREATIVES_PATH}/${conceptId}/Raw Footage`
+    const { data: files } = await supabase
+      .from('sharepoint_map')
+      .select('id')
+      .eq('parent_path', rawFootagePath)
+      .eq('item_type', 'file')
+      .limit(1)
+
+    const isEmpty = !files || files.length === 0
+    if (!isEmpty) continue
+
+    const updatedAt = new Date(row.updated_at ?? 0)
+    const daysWaiting = Math.floor((Date.now() - updatedAt.getTime()) / (1000 * 60 * 60 * 24))
+    stale.push({ conceptId, conceptName: row.concept_name ?? conceptId, daysWaiting })
+  }
+
+  if (stale.length === 0) return
+
+  const lines = stale
+    .map(s => `• *${s.conceptName}* (\`${s.conceptId}\`) — ${s.daysWaiting} days since approved, no footage uploaded`)
+    .join('\n')
+
+  await sendBlocks(
+    'videoEditor',
+    [
+      {
+        type: 'header',
+        text: { type: 'plain_text', text: '📹 Footage Check — Scripts Waiting on Raw Footage', emoji: true },
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `The following scripts have been approved for recording but their Raw Footage folder is still empty:\n\n${lines}`,
+        },
+      },
+      {
+        type: 'context',
+        elements: [
+          {
+            type: 'mrkdwn',
+            text: `${stale.length} concept${stale.length !== 1 ? 's' : ''} waiting · ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} ET`,
+          },
+        ],
+      },
+    ] as KnownBlock[],
+    `📹 ${stale.length} script${stale.length !== 1 ? 's' : ''} still waiting for raw footage`,
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export async function run(): Promise<SkillOutput> {
@@ -331,6 +403,36 @@ export async function run(): Promise<SkillOutput> {
         text: { type: 'mrkdwn', text: `✅ *SharePoint Structure Audit* — all ${videoFolders.length + staticFolders.length} folders pass naming validation and have required subfolders.` },
       },
     ] as KnownBlock[], 'SharePoint Structure Audit — all folders valid')
+  }
+
+  // Bi-weekly footage check — runs on Mondays only, at most once per 7 days
+  if (new Date().getDay() === 1) {
+    const { data: lastFootageRun } = await supabase
+      .from('skill_runs')
+      .select('completed_at')
+      .eq('skill', 'sharepoint-footage-check')
+      .order('completed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const lastRun = lastFootageRun?.completed_at ? new Date(lastFootageRun.completed_at) : null
+    const daysSinceLastRun = lastRun ? (Date.now() - lastRun.getTime()) / (1000 * 60 * 60 * 24) : Infinity
+
+    if (daysSinceLastRun >= 7) {
+      try {
+        await runFootageCheck()
+        await supabase.from('skill_runs').insert({
+          agent: 'cmo',
+          skill: 'sharepoint-footage-check',
+          started_at: startedAt,
+          completed_at: new Date().toISOString(),
+          status: 'success',
+          output_summary: { note: 'footage check ran' },
+        })
+      } catch (err) {
+        console.error('[sharepoint-structure-agent] Footage check failed:', (err as Error).message)
+      }
+    }
   }
 
   await supabase.from('skill_runs').insert({

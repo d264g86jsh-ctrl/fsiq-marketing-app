@@ -1,11 +1,9 @@
-// script-generator.skill.ts — Skill 1.3
-// Generates 3 video ad script concepts via Claude using:
-//   - Best-performing creative benchmarks (cp2ql_lifetime < $200)
-//   - Unused inspiration ads from inspiration_catalog
-//   - SOPs: paid-media, ad-scripting-rules, fsiq-company-profile, fsiq-brand-voice-paid-ads
-// Posts each concept to #MediaBuying with approve/skip buttons.
-// approve_script_[id] → status='Recording Pending' + ClickUp task
-// skip_script_[id]    → status='Killed'
+// script-generator.skill.ts — Skill 1.3 (v2 — Stage 1 of multi-stage pipeline)
+// Generates 3 script topic ideas from approved (approved=true, used=false) inspiration ads.
+// Posts topics to #MediaBuying for human approve/skip.
+// approve_topic_{topicId}_{idx} → webhook fires script-stage2 (Stage 2)
+// skip_topic_{topicId}_{idx}    → topic ignored, no script written
+// SOPs: paid-media, ad-scripting-rules, fsiq-company-profile, fsiq-brand-voice-paid-ads
 
 import fs from 'fs'
 import path from 'path'
@@ -20,25 +18,19 @@ function loadSop(name: string): string {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface ScriptConcept {
+interface TopicIdea {
   concept_name: string
   hook_type: string
   awareness_level: string
   suggested_lp: string
-  full_script: string
-  estimated_duration: string
+  angle: string
   inspiration_source: string | null
-}
-
-interface InsertedConcept extends ScriptConcept {
-  id: string
-  global_number: number
 }
 
 export interface ScriptGeneratorOutput {
   run_at: string
-  concepts_generated: number
-  pipeline_ids: string[]
+  topic_row_id: string
+  topics_generated: number
   inspiration_ids_used: string[]
 }
 
@@ -48,40 +40,32 @@ export async function run(): Promise<ScriptGeneratorOutput> {
   const startedAt = new Date().toISOString()
 
   // 1. Load SOPs at runtime per AGENTS.md pairing rule
-  const sop           = loadSop('paid-media-agent-sop.md')
-  const scriptRules   = loadSop('ad-scripting-rules.md')
+  const sop            = loadSop('paid-media-agent-sop.md')
+  const scriptRules    = loadSop('ad-scripting-rules.md')
   const companyProfile = loadSop('fsiq-company-profile.md')
-  const brandVoice    = loadSop('fsiq-brand-voice-paid-ads.md')
+  const brandVoice     = loadSop('fsiq-brand-voice-paid-ads.md')
 
-  // 2. Fetch best-performing creative benchmarks
+  // 2. Fetch best-performing creative benchmarks for creative direction
   const { data: benchmarks } = await supabase
     .from('creative_pipeline')
-    .select('concept_name, hook_type, awareness_level, lp_code, cp2ql_lifetime, duration, hook_description')
+    .select('concept_name, hook_type, awareness_level, lp_code, cp2ql_lifetime, hook_description')
     .lt('cp2ql_lifetime', 200)
     .not('cp2ql_lifetime', 'is', null)
     .order('cp2ql_lifetime', { ascending: true })
     .limit(10)
 
-  // 3. Fetch unused inspiration ads
+  // 3. Fetch approved, unused inspiration ads
   const { data: inspirationAds } = await supabase
     .from('inspiration_catalog')
     .select('id, library_id, headline, body_text, cta_text, cta_type, ad_type, source_page')
+    .eq('approved', true)
     .eq('used', false)
     .order('scraped_at', { ascending: false })
     .limit(10)
 
-  // 4. Get current max global_number for sequential ID assignment
-  const { data: maxRow } = await supabase
-    .from('creative_pipeline')
-    .select('global_number')
-    .not('global_number', 'is', null)
-    .order('global_number', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  const inspirationIds = (inspirationAds ?? []).map(a => a.id as string)
 
-  const startGlobalNumber = (maxRow?.global_number ?? 0) + 1
-
-  // 5. Build Claude prompt
+  // 4. Build Claude prompt
   const benchmarkLines = (benchmarks ?? []).map(ad =>
     `  - ${ad.concept_name ?? 'Unknown'} | Hook: ${ad.hook_type ?? '?'} | Awareness: ${ad.awareness_level ?? '?'} | LP: ${ad.lp_code ?? '?'} | CP2QL: $${ad.cp2ql_lifetime}`
   ).join('\n')
@@ -93,12 +77,12 @@ export async function run(): Promise<ScriptGeneratorOutput> {
     `      CTA: ${ad.cta_text ?? 'none'} (${ad.cta_type ?? '?'}) | Type: ${ad.ad_type} | Brand: ${ad.source_page}`
   ).join('\n\n')
 
-  const prompt = `You are a direct-response video ad scriptwriter for FoodServiceIQ (FSIQ).
+  const prompt = `You are a direct-response video ad strategist for FoodServiceIQ (FSIQ).
 
 ## Company Profile (facts, case studies, proof points)
 ${companyProfile}
 
-## Brand Voice Guide (rules, tone, hook taxonomy, CTA rules — follow every rule exactly)
+## Brand Voice Guide (rules, tone, hook taxonomy, CTA rules)
 ${brandVoice}
 
 ## Paid Media Agent SOP
@@ -110,184 +94,150 @@ ${scriptRules}
 ## Best-Performing Concepts (CP2QL < $200 lifetime)
 ${benchmarkLines || '  No benchmark data yet — reference the top performers in the Company Profile.'}
 
-## Unused Competitor Inspiration Ads (scraped from Meta Ads Library)
-${inspirationLines || '  No inspiration ads available — write from first principles using the Brand Voice Guide.'}
+## Approved Competitor Inspiration Ads (scraped from Meta Ads Library)
+${inspirationLines || '  No approved inspiration ads available — generate from first principles using the Brand Voice Guide.'}
 
 ## Task
-Generate exactly 3 new video ad script concepts for FSIQ targeting independent restaurant operators
-doing $3M–$50M+ in annual revenue (owners, GMs, directors of operations).
+Generate exactly 3 script topic ideas for new FSIQ video ads targeting independent restaurant operators
+doing $3M–$50M+ annual revenue (owners, GMs, directors of operations).
 
-Requirements per script (follow Brand Voice Guide for all rules):
-- Open in media res — no warmup, no introduction, already delivering value by sentence 2
-- Use a hook type from the Brand Voice Guide hook taxonomy (Section 5)
-- Identify genuine white space — do NOT echo existing hook patterns already in the benchmarks above
-- Body must include both mechanisms: $2B+ buying power AND founder insider knowledge
-- Body must include the no-disruption guarantee: "no changes to ingredients or distributors"
-- Body must communicate the performance-based model: zero upfront cost
-- Default CTA: LP2-EB (free playbook) for Unaware/Problem Aware; LP1-CS for Solution Aware
-- Never hardcode playbook page count — use "our free playbook" only
-- Length: 45–75 seconds for cold traffic (iPhone/Podcast formats)
-- Two hook variants per concept: one iPhone (loose, riffing), one Studio (composed, confident)
-- Use ellipses not em dashes; no short choppy sentences; no math out loud; no fear-mongering
+These are topic proposals — not full scripts yet. A human will approve topics before scripts are written.
 
-For inspiration_source: if a competitor ad above directly inspired the concept, provide its library_id. Otherwise null.
+Requirements:
+- Identify genuine white space — do NOT echo hook types already in the benchmarks above
+- Each topic must name a specific creative angle (what the viewer feels/realizes at the hook, not just the hook category)
+- If a competitor ad directly inspired a concept, include its library_id in inspiration_source
+- Default LP: LP2-EB for Unaware/Problem Aware; LP1-CS for Solution Aware
 
 Return ONLY a valid JSON array of exactly 3 objects — no preamble, no markdown, no explanation:
 [
   {
     "concept_name": "4-6 word memorable name",
     "hook_type": "Post-Meeting | Gift-Offer | Podcast-Social-Proof | Data Hook | Pattern-Interrupt | Self-Qualifying | Invoice-Proof | Announcement",
-    "awareness_level": "Unaware | Problem Aware | Solution Aware | Most Aware",
+    "awareness_level": "Unaware | Problem Aware | Solution Aware",
     "suggested_lp": "LP2-EB",
-    "full_script": "Complete word-for-word script with [HOOK-IPHONE], [HOOK-STUDIO], [BODY], [CTA] section markers",
-    "estimated_duration": "60s",
+    "angle": "1-2 sentence description of the specific creative angle and why it will resonate with the target operator",
     "inspiration_source": "library_id string or null"
   }
 ]`
 
-  // 6. Generate scripts via Claude
-  const concepts = await askClaudeJson<ScriptConcept[]>(prompt, 8192)
+  // 5. Generate topic ideas via Claude
+  const topics = await askClaudeJson<TopicIdea[]>(prompt, 2048)
 
-  if (!Array.isArray(concepts) || concepts.length === 0) {
-    throw new Error('Claude did not return a valid array of script concepts')
+  if (!Array.isArray(topics) || topics.length === 0) {
+    throw new Error('Claude did not return valid topic ideas')
   }
-  const validConcepts = concepts.slice(0, 3)
+  const validTopics = topics.slice(0, 3)
 
-  // 7. Insert rows into creative_pipeline
-  const insertedConcepts: InsertedConcept[] = []
+  // 6. Insert script_topics row
+  const { data: topicRow, error: insertError } = await supabase
+    .from('script_topics')
+    .insert({
+      inspiration_ids: inspirationIds,
+      topics:          validTopics,
+      approved_topics: [],
+      status:          'pending',
+    })
+    .select('id')
+    .single()
 
-  for (let i = 0; i < validConcepts.length; i++) {
-    const c = validConcepts[i]
-    const globalNumber = startGlobalNumber + i
-
-    const conceptId = `FSIQ-VIDEO-AD-${globalNumber}`
-
-    const { data: row, error } = await supabase
-      .from('creative_pipeline')
-      .insert({
-        ad_id:           conceptId,
-        global_number:   globalNumber,
-        concept_name:    c.concept_name,
-        ad_type:         'Video',
-        hook_type:       c.hook_type,
-        awareness_level: c.awareness_level,
-        lp_code:         c.suggested_lp,
-        script_draft:    c.full_script,
-        duration:        c.estimated_duration,
-        status:          'In Progress',
-        is_active:       false,
-      })
-      .select('id')
-      .single()
-
-    if (error || !row) {
-      console.error(`[script-generator] Insert failed for concept ${i + 1}:`, error?.message)
-      continue
-    }
-
-    insertedConcepts.push({ ...c, id: row.id, global_number: globalNumber })
-    console.log(`  ✅ FSIQ-VIDEO-AD-${globalNumber}: ${c.concept_name}`)
+  if (insertError || !topicRow) {
+    throw new Error(`Failed to insert script_topics: ${insertError?.message}`)
   }
 
-  // 8. Mark referenced inspiration ads as used
-  const usedLibraryIds = validConcepts
-    .map(c => c.inspiration_source)
-    .filter((id): id is string => typeof id === 'string' && id.length > 0)
+  const topicId = topicRow.id as string
 
-  const usedInspirationIds: string[] = []
-  if (usedLibraryIds.length > 0) {
-    const { data: updatedRows } = await supabase
-      .from('inspiration_catalog')
-      .update({ used: true })
-      .in('library_id', usedLibraryIds)
-      .select('id')
-    usedInspirationIds.push(...(updatedRows ?? []).map(r => r.id as string))
-  }
+  // 7. Build Slack message — one message with all 3 topics, each with approve/skip
+  const blocks: KnownBlock[] = [
+    {
+      type: 'header',
+      text: { type: 'plain_text', text: '🎯 New Script Topics — Approve to Generate Scripts', emoji: true },
+    },
+    {
+      type: 'context',
+      elements: [
+        {
+          type: 'mrkdwn',
+          text: `topic_row: \`${topicId}\`  ·  ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} ET`,
+        },
+      ],
+    },
+    { type: 'divider' },
+  ]
 
-  // 9. Post each concept to #MediaBuying with approve/skip buttons
-  for (const concept of insertedConcepts) {
-    const conceptId = `FSIQ-VIDEO-AD-${concept.global_number}`
-    const scriptPreview = concept.full_script.length > 500
-      ? concept.full_script.slice(0, 497) + '…'
-      : concept.full_script
-
-    const blocks: KnownBlock[] = [
-      {
-        type: 'header',
-        text: { type: 'plain_text', text: `🎬 New Script — ${concept.concept_name}`, emoji: true },
-      },
+  for (let i = 0; i < validTopics.length; i++) {
+    const t = validTopics[i]
+    blocks.push(
       {
         type: 'section',
-        fields: [
-          { type: 'mrkdwn', text: `*Concept ID*\n${conceptId}` },
-          { type: 'mrkdwn', text: `*Hook Type*\n${concept.hook_type}` },
-          { type: 'mrkdwn', text: `*Awareness Level*\n${concept.awareness_level}` },
-          { type: 'mrkdwn', text: `*Landing Page*\n${concept.suggested_lp}` },
-          { type: 'mrkdwn', text: `*Duration*\n${concept.estimated_duration}` },
-          { type: 'mrkdwn', text: `*Inspiration*\n${concept.inspiration_source ?? 'Original'}` },
-        ],
+        text: {
+          type: 'mrkdwn',
+          text: [
+            `*${i + 1}. ${t.concept_name}*`,
+            `*Hook:* ${t.hook_type}  ·  *Awareness:* ${t.awareness_level}  ·  *LP:* ${t.suggested_lp}`,
+            `*Angle:* ${t.angle}`,
+            `*Inspiration:* ${t.inspiration_source ?? 'Original'}`,
+          ].join('\n'),
+        },
       },
-      {
-        type: 'section',
-        text: { type: 'mrkdwn', text: `*Script:*\n\`\`\`${scriptPreview}\`\`\`` },
-      },
-      { type: 'divider' },
       {
         type: 'actions',
         elements: [
           {
             type: 'button',
-            text: { type: 'plain_text', text: '✅ Approve Script', emoji: true },
+            text: { type: 'plain_text', text: '✅ Approve Topic', emoji: true },
             style: 'primary',
-            action_id: `approve_script_${concept.id}`,
-            value: concept.id,
+            action_id: `approve_topic_${topicId}_${i}`,
+            value: `${topicId}:${i}`,
           },
           {
             type: 'button',
             text: { type: 'plain_text', text: '❌ Skip', emoji: true },
             style: 'danger',
-            action_id: `skip_script_${concept.id}`,
-            value: concept.id,
+            action_id: `skip_topic_${topicId}_${i}`,
+            value: `${topicId}:${i}`,
           },
         ],
       },
-      {
-        type: 'context',
-        elements: [
-          {
-            type: 'mrkdwn',
-            text: `pipeline_id: \`${concept.id}\`  ·  ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} ET`,
-          },
-        ],
-      },
-    ]
-
-    await sendBlocks(
-      'mediaBuying',
-      blocks as never[],
-      `🎬 New Script: ${concept.concept_name} (${concept.hook_type}) — ${conceptId}`,
+      { type: 'divider' },
     )
   }
 
-  // 10. Log skill run
+  const slackRes = await sendBlocks(
+    'mediaBuying',
+    blocks as never[],
+    `🎯 ${validTopics.length} new script topics ready for review`,
+  )
+
+  // 8. Save slack_ts + status back to script_topics
+  await supabase
+    .from('script_topics')
+    .update({
+      status:        'topics_posted',
+      slack_ts:      slackRes.ts ?? null,
+      slack_channel: slackRes.channel ?? null,
+    })
+    .eq('id', topicId)
+
+  // 9. Log skill run
   const runAt = new Date().toISOString()
   await supabase.from('skill_runs').insert({
-    agent:        'paid-media',
-    skill:        'script-generator',
-    started_at:   startedAt,
-    completed_at: runAt,
-    status:       'success',
+    agent:          'paid-media',
+    skill:          'script-generator',
+    started_at:     startedAt,
+    completed_at:   runAt,
+    status:         'success',
     output_summary: {
-      concepts_generated:   insertedConcepts.length,
-      pipeline_ids:         insertedConcepts.map(c => c.id),
-      inspiration_ids_used: usedInspirationIds,
+      topic_row_id:         topicId,
+      topics_generated:     validTopics.length,
+      inspiration_ids_used: inspirationIds,
     },
   })
 
   return {
     run_at:               runAt,
-    concepts_generated:   insertedConcepts.length,
-    pipeline_ids:         insertedConcepts.map(c => c.id),
-    inspiration_ids_used: usedInspirationIds,
+    topic_row_id:         topicId,
+    topics_generated:     validTopics.length,
+    inspiration_ids_used: inspirationIds,
   }
 }
