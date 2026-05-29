@@ -2,7 +2,7 @@
 // Generates 3 video ad script concepts via Claude using:
 //   - Best-performing creative benchmarks (cp2ql_lifetime < $200)
 //   - Unused inspiration ads from inspiration_catalog
-//   - SOPs: paid-media, ad-scripting-rules, neil-voice-guide, fsiq-brand-voice-guide
+//   - SOPs: paid-media, ad-scripting-rules, fsiq-company-profile, fsiq-brand-voice-paid-ads
 // Posts each concept to #MediaBuying with approve/skip buttons.
 // approve_script_[id] → status='Recording Pending' + ClickUp task
 // skip_script_[id]    → status='Killed'
@@ -48,10 +48,10 @@ export async function run(): Promise<ScriptGeneratorOutput> {
   const startedAt = new Date().toISOString()
 
   // 1. Load SOPs at runtime per AGENTS.md pairing rule
-  const sop         = loadSop('paid-media-agent-sop.md')
-  const scriptRules = loadSop('ad-scripting-rules.md')
-  const neilVoice   = loadSop('neil-voice-guide.md')
-  const brandVoice  = loadSop('fsiq-brand-voice-guide.md')
+  const sop           = loadSop('paid-media-agent-sop.md')
+  const scriptRules   = loadSop('ad-scripting-rules.md')
+  const companyProfile = loadSop('fsiq-company-profile.md')
+  const brandVoice    = loadSop('fsiq-brand-voice-paid-ads.md')
 
   // 2. Fetch best-performing creative benchmarks
   const { data: benchmarks } = await supabase
@@ -95,45 +95,51 @@ export async function run(): Promise<ScriptGeneratorOutput> {
 
   const prompt = `You are a direct-response video ad scriptwriter for FoodServiceIQ (FSIQ).
 
-## Paid Media SOP
+## Company Profile (facts, case studies, proof points)
+${companyProfile}
+
+## Brand Voice Guide (rules, tone, hook taxonomy, CTA rules — follow every rule exactly)
+${brandVoice}
+
+## Paid Media Agent SOP
 ${sop}
 
 ## Ad Scripting Rules
 ${scriptRules}
 
-## Brand Voice Guide
-${brandVoice}
-
-## Neil's Voice Guide
-${neilVoice}
-
 ## Best-Performing Concepts (CP2QL < $200 lifetime)
-${benchmarkLines || '  No benchmark data yet — use SOP thresholds as reference.'}
+${benchmarkLines || '  No benchmark data yet — reference the top performers in the Company Profile.'}
 
 ## Unused Competitor Inspiration Ads (scraped from Meta Ads Library)
-${inspirationLines || '  No inspiration ads available — write from first principles.'}
+${inspirationLines || '  No inspiration ads available — write from first principles using the Brand Voice Guide.'}
 
 ## Task
-Generate exactly 3 new video ad script concepts for FSIQ targeting food service operators who spend $600k+ annually on food (restaurant owners, GMs, directors of operations).
+Generate exactly 3 new video ad script concepts for FSIQ targeting independent restaurant operators
+doing $3M–$50M+ in annual revenue (owners, GMs, directors of operations).
 
-Requirements per script:
-- Open with a high-impact pattern-interrupt hook (first 3 seconds determine scroll-stop rate)
-- Address a core pain: food cost pressure, margin squeeze, finding better pricing/suppliers
-- Build trust with FSIQ's data-backed approach (3+ years, 90k+ restaurants tracked)
-- Clear CTA driving to eBook download or case study (default: LP2-EB; use LP1-CS for Unaware/Problem Aware audiences)
-- Length: 45–90 seconds (scripts under 60s outperform on cold traffic)
-- Conversational, peer-to-peer voice — operator talking to operator
+Requirements per script (follow Brand Voice Guide for all rules):
+- Open in media res — no warmup, no introduction, already delivering value by sentence 2
+- Use a hook type from the Brand Voice Guide hook taxonomy (Section 5)
+- Identify genuine white space — do NOT echo existing hook patterns already in the benchmarks above
+- Body must include both mechanisms: $2B+ buying power AND founder insider knowledge
+- Body must include the no-disruption guarantee: "no changes to ingredients or distributors"
+- Body must communicate the performance-based model: zero upfront cost
+- Default CTA: LP2-EB (free playbook) for Unaware/Problem Aware; LP1-CS for Solution Aware
+- Never hardcode playbook page count — use "our free playbook" only
+- Length: 45–75 seconds for cold traffic (iPhone/Podcast formats)
+- Two hook variants per concept: one iPhone (loose, riffing), one Studio (composed, confident)
+- Use ellipses not em dashes; no short choppy sentences; no math out loud; no fear-mongering
 
-For inspiration_source: if a competitor ad above directly inspired the concept, provide its library_id. Otherwise use null.
+For inspiration_source: if a competitor ad above directly inspired the concept, provide its library_id. Otherwise null.
 
 Return ONLY a valid JSON array of exactly 3 objects — no preamble, no markdown, no explanation:
 [
   {
     "concept_name": "4-6 word memorable name",
-    "hook_type": "Problem-Led | Data Hook | Social Proof | Curiosity | Transformation | Authority | Before/After",
+    "hook_type": "Post-Meeting | Gift-Offer | Podcast-Social-Proof | Data Hook | Pattern-Interrupt | Self-Qualifying | Invoice-Proof | Announcement",
     "awareness_level": "Unaware | Problem Aware | Solution Aware | Most Aware",
     "suggested_lp": "LP2-EB",
-    "full_script": "Complete word-for-word script with [HOOK], [BODY], [CTA] section markers",
+    "full_script": "Complete word-for-word script with [HOOK-IPHONE], [HOOK-STUDIO], [BODY], [CTA] section markers",
     "estimated_duration": "60s",
     "inspiration_source": "library_id string or null"
   }

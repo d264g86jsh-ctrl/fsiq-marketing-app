@@ -20,8 +20,13 @@ Every SOP file in `/sops/` must have corresponding skill file(s). Every skill fi
 | `sops/comms-agent-sop.md` | all skills in `skills/comms/` |
 | `sops/cmo-orchestrator-sop.md` | CMO orchestrator skills |
 | `sops/video-review-qa-framework.md` | footage-watcher, campaign-brief-generator |
-| `sops/neil-voice-guide.md` | linkedin-writer |
-| `sops/fsiq-brand-voice-guide.md` | linkedin-writer, content-ideation |
+| `sops/fsiq-company-profile.md` | script-generator, campaign-brief-generator, all paid-media skills |
+| `sops/fsiq-brand-voice-paid-ads.md` | script-generator, campaign-brief-generator |
+| `sops/fsiq-brand-voice-organic.md` | organic-content skills (placeholder — not yet active) |
+| `sops/fsiq-brand-voice-linkedin.md` | linkedin-writer |
+| `sops/fsiq-brand-voice-blog.md` | seo-content skills (placeholder — not yet active) |
+| `sops/neil-voice-guide.md` | linkedin-writer (stub — superseded by fsiq-brand-voice-linkedin.md when built) |
+| `sops/fsiq-brand-voice-guide.md` | organic skills (stub — superseded by fsiq-brand-voice-organic.md when built) |
 | `sops/ad-scripting-rules.md` | script-generator |
 | `sops/campaign-brief-template.md` | campaign-brief-generator |
 
@@ -106,3 +111,20 @@ export async function run(): Promise<SkillOutput> {
 | `campaign-brief-generator` | `#video-editor` | `skill_runs` |
 | `footage-watcher` | `#video-editor` | `skill_runs` |
 <!-- END:skill-output-pattern -->
+
+<!-- BEGIN:brand-voice-self-update-rule -->
+# RULE: fsiq-brand-voice-paid-ads.md IS A LIVING DOCUMENT
+
+`sops/fsiq-brand-voice-paid-ads.md` must be updated when any of the following occur:
+
+1. **A new hook type is validated** — any ad reaching >80 lifetime leads OR cp2ql_lifetime < $150 → append to Section 5 (Hook Taxonomy) with performance data and date
+2. **A new writing rule is confirmed** — creative team explicitly adds or removes a rule (Neil or Kyra) → update Section 2 (Non-Negotiable Writing Rules)
+3. **A new "what not to write" pattern** — a failed pattern is identified from ad performance → append to Section 12 (What NOT to Write)
+4. **A new top performer** — update Section 13 (Proof Points) and fsiq-company-profile.md Section 9 (Top-Performing Ads)
+
+**Responsible agent:** `performance-sync.skill.ts` should append to this file when it syncs new cp2ql_lifetime data that crosses the threshold.
+
+**Responsible human:** Neil or Kyra should notify Rodrigo when a rule changes; Rodrigo updates the file.
+
+Do NOT update this SOP speculatively — only on confirmed data or explicit instruction.
+<!-- END:brand-voice-self-update-rule -->
