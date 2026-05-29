@@ -285,9 +285,100 @@ Return only the final rewritten text. No commentary, no markup, no "here's what 
 
 ---
 
+## 5. Channel-Specific Voice Examples
+
+Use these examples when humanizing content for a specific channel. Each shows what AI-generated content for that channel looks like vs what real FSIQ content looks like.
+
+---
+
+### Paid Ads (existing — see Section 2 for full pattern list)
+
+The paid ad voice is Neil on iPhone or in a studio, talking directly to an independent restaurant operator. Ellipses, conversational rhythm, in-media-res openings, low-pressure CTAs.
+
+❌ AI version:
+"FoodServiceIQ's groundbreaking approach underscores the transformative potential of data-driven procurement, empowering independent restaurants to thrive in today's challenging landscape."
+
+✅ Real FSIQ paid ad voice (AD-09 iPhone hook):
+"I just left a meeting with a restaurant owner who spends more than $2M per year on food and was pretty sure his food costs were dialed in."
+
+---
+
+### Instagram / Facebook Organic
+
+Current voice (2026): prose paragraphs, no emojis, no hashtags in many posts, case study results or insight-driven openers.
+
+**Before/After 1 — significance inflation → named result:**
+❌ "FoodServiceIQ is helping independent restaurants achieve meaningful improvements in their food cost management journey, driving transformational outcomes across thousands of operators."
+✅ (Real post, May 2026): "Dish Society was doing $10M in annual revenue. They're on pace for $30M. While we handled food cost strategy and execution, Aaron and his team focused on running and growing the restaurants. $413,000+ in yearly food distribution savings. 3x revenue growth."
+
+**Before/After 2 — vague insight → specific mechanism:**
+❌ "Smart operators know that working smarter, not harder, is the key to controlling food costs in today's competitive environment."
+✅ (Real post, Mar 2026): "Big chains don't end up with stronger margins by luck. A big part of it is how they buy: fewer, deeper distributor relationships, more concentrated volume, decisions made at the basket level, not the SKU level."
+
+**Before/After 3 — promotional CTA → proof-then-soft-ask:**
+❌ "Ready to transform your restaurant's food cost performance? Contact FoodServiceIQ today and discover the difference our innovative approach can make!"
+✅ (Real post, May 2026): "The system behind food costs has layers most independent restaurant operators have never seen. No single invoice shows you the full picture. That's where an estimated $2.37 billion goes every year. The good news is that almost all of it is recoverable. Book a free savings audit at the link in our bio."
+
+---
+
+### Neil LinkedIn
+
+Neil's LinkedIn voice is analytical and operator-to-operator. Full sentences, formal grammar, no ellipses, no emojis. Opens with a case, quote, or direct claim. Ends with a soft DM CTA.
+
+**Before/After 1 — warm-up opener → direct case:**
+❌ "I wanted to share some thoughts today on an important challenge facing independent restaurant operators when it comes to managing food costs effectively."
+✅ (Real Neil post — 19 reactions): "A few months ago, we started working with a growing multi-unit group doing about $6M in annual food spend. Their GM reached out to us because he knew food costs were too high, but he couldn't fully explain why."
+
+**Before/After 2 — vague industry claim → operator quote + challenge:**
+❌ "Many independent restaurant operators believe they are getting competitive pricing from their distributors, but the reality may be more complicated than they realize."
+✅ (Real Neil post — 11 reactions): '"We already have preferred pricing." I hear this in many conversations with independent restaurant owners. My follow-up is always the same: preferred compared to what?'
+
+**Before/After 3 — signposting → observation + counterintuitive insight:**
+❌ "In this post, I'd like to walk you through why consolidating your distributor relationships can actually lead to better pricing outcomes for independent restaurant groups."
+✅ (Real Neil post — 16 reactions): "Many of the restaurant operators we meet with shop their SKUs between multiple distributors each week. Find the cheapest proteins here, paper goods there, dairy products somewhere else… split the order across a handful of vendors and feel like you outsmarted the system. The catch: distributor pricing is built around delivery economics, not a weekly SKU contest."
+
+---
+
+### FSIQ Company LinkedIn
+
+More structured than Neil's personal page. Uses ✅ for process steps and → for outcomes in case study posts. Third-person reference to Neil in CTAs. Slightly warmer for client celebration posts.
+
+**Before/After 1 — generic announcement → named result:**
+❌ "We are pleased to share the success story of one of our valued clients who achieved significant food cost reductions through our partnership."
+✅ (Real FSIQ company post — 15 reactions): "Big chains don't end up with stronger margins by luck. A big part of it is how they buy: fewer, deeper distributor relationships, more concentrated volume, decisions made at the basket level, not the SKU level. They choose not to [shop multiple distributors]. Because they've learned a simple truth: the best procurement model is one that's repeatable, supports existing operations, and drives down blended cost over time."
+
+**Before/After 2 — passive case study → structured outcome format:**
+❌ "FoodServiceIQ recently helped Black's Barbecue achieve impressive food cost reductions through our comprehensive procurement optimization process, resulting in significant annual savings."
+✅ (Real FSIQ company post — 14 reactions): "Blacks Barbecue, Texas' oldest BBQ restaurant operating since 1932, partnered with FoodServiceIQ to improve cost visibility and strengthen procurement structure within their existing distributor relationships. The outcome: → $427,000+ in recurring annual savings → 7.5% reduction in total food spend → Zero operational disruption"
+
+**Before/After 3 — vague value prop → one-line hook + proof:**
+❌ "FoodServiceIQ offers independent restaurants a comprehensive, data-driven approach to food cost optimization that delivers measurable results."
+✅ (Real FSIQ company post — 13 reactions): "Most restaurants are buying the right products — just not at the right price. After 20+ years and 2,000+ restaurants supported, our team put together a clear, operator-friendly playbook on how to reduce food costs the same way large chains do."
+
+---
+
+### Blog
+
+Formal, third-person brand voice. SEO-optimized titles and H2 headers. Short declarative opener → gap → strategies → FSIQ solution → contact CTA. No ellipses, no contractions, no em dashes.
+
+**Before/After 1 — AI landscape opener → direct claim:**
+❌ "In today's rapidly evolving food service landscape, independent restaurant operators face unprecedented challenges when it comes to managing food costs effectively while maintaining quality and operational excellence."
+✅ (Real FSIQ blog opener): "Independent restaurants have always competed on food, service, and hospitality. Procurement is a different story."
+
+**Before/After 2 — vague problem statement → specific structural gap:**
+❌ "Food costs represent one of the biggest challenges facing independent restaurants, and finding ways to reduce them without disrupting operations is a key priority for operators nationwide."
+✅ (Real FSIQ blog opener): "Reducing food costs is one of the most persistent priorities for independent restaurant operators. However, many assume the only way to achieve meaningful savings is by switching suppliers, reformulating Order Guides, or negotiating aggressively with distributors. In reality, some of the largest food costs improvements happen without operational disruption."
+
+**Before/After 3 — AI promotional close → restated value prop + contact:**
+❌ "FoodServiceIQ's innovative, groundbreaking approach to food cost optimization empowers independent restaurants to thrive in an increasingly competitive market. Contact us today to begin your transformational journey."
+✅ (Real FSIQ blog close): "Independent restaurants don't need to compromise quality, switch suppliers, or disrupt operations to improve food costs performance. In many cases, the biggest gains come from upgraded distribution pricing structures, food costs inflation protections, direct manufacturer alignment, and ongoing auditing and cost monitoring. If you want to understand where those opportunities may exist in your current procurement environment, reach out to our team for a quick audit conversation."
+
+---
+
 ## Changelog
 
 | Date | Change |
 |------|--------|
 | May 2026 | Initial version — patterns drawn from humanizer skill, all examples recontextualized to FSIQ |
 | May 2026 | Replace synthesized examples with real lines from FSIQ scripting doc (AD-07, AD-09, Dollar Saved ad, Rob Tier Ad, High Ticket Podcast, Success Rate Ad); add DOWNSTREAM OUTCOMES pattern |
+| May 2026 | Add Section 5 — Channel-Specific Voice Examples built from real Instagram, LinkedIn (Neil + FSIQ), and blog content |

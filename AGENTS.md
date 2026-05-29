@@ -173,3 +173,37 @@ It also loads the context-specific voice SOP per the SOP ↔ SKILL PAIRING rule 
 
 All future writing skills must be added to this table when built.
 <!-- END:humanizer-rule -->
+
+<!-- BEGIN:humanizer-auto-update-rule -->
+# HUMANIZER AUTO-UPDATE RULE (mandatory)
+
+`sops/fsiq-humanizer-sop.md` Section 5 (Channel-Specific Voice Examples) is a living document.
+It must be updated whenever any of the following occur:
+
+## Trigger 1 — Voice MD updated
+When a voice MD in `sops/voice/` is updated with new examples or patterns, the corresponding
+channel section in `sops/fsiq-humanizer-sop.md` Section 5 must also be updated.
+
+| Voice MD updated | Humanizer section to update |
+|------------------|-----------------------------|
+| `sops/voice/fsiq-organic-voice.md` | Instagram / Facebook Organic |
+| `sops/voice/neil-linkedin-voice.md` | Neil LinkedIn |
+| `sops/voice/fsiq-linkedin-voice.md` | FSIQ Company LinkedIn |
+| `sops/voice/fsiq-blog-voice.md` | Blog |
+| `sops/fsiq-brand-voice-paid-ads.md` | Paid Ads |
+
+## Trigger 2 — High-performing content
+When a content piece achieves exceptional engagement (Instagram: 15+ likes; LinkedIn: 20+ reactions):
+→ Add its opening line as a new approved ✅ example in the relevant humanizer channel section.
+
+## Trigger 3 — Poor-performing content
+When a content piece underperforms and a post-mortem identifies an AI writing pattern as cause:
+→ Add its opening line as a new ❌ avoid example in the relevant humanizer channel section.
+
+## How to update
+1. Add the new example to the correct channel block in Section 5 of `fsiq-humanizer-sop.md`
+2. Add a row to the Changelog with the date, channel, and what changed
+3. Do NOT remove existing examples unless they are factually wrong
+
+Do not update speculatively — only on confirmed performance data or explicit instruction.
+<!-- END:humanizer-auto-update-rule -->
