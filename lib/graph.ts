@@ -1,54 +1,89 @@
 // lib/graph.ts — Microsoft Graph API client
 //
-// Authentication: uses MICROSOFT_ACCESS_TOKEN from .env.local.
-// Token is a short-lived (~75 min) JWT obtained from Graph Explorer.
+// Authentication priority:
+//   1. client_credentials flow (primary — never expires, auto-renews)
+//      Requires: AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET
+//   2. Static token fallback (MICROSOFT_ACCESS_TOKEN) — manual refresh required
+//   3. Error if both unavailable
 //
-// To set up / refresh:
-//   npx tsx --env-file=.env.local scripts/setup-graph-auth.ts --token eyJ0eXAi...
-//
-// When the token expires this module throws a clear error with instructions.
-// A permanent refresh-token flow can be wired in later once a redirect URI
-// is registered on the connected app.
+// Token cache: client_credentials tokens are cached in memory with a 55-min TTL.
 
-// ── Token retrieval ───────────────────────────────────────────────────────────
+// ── Token cache (client_credentials only) ─────────────────────────────────────
 
-function decodeJwtExp(token: string): number | null {
-  try {
-    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf-8'))
-    return typeof payload.exp === 'number' ? payload.exp : null
-  } catch {
-    return null
-  }
+interface TokenCache {
+  token: string
+  expiresAt: number  // ms since epoch
 }
 
-export function getGraphToken(): string {
-  const token = process.env.MICROSOFT_ACCESS_TOKEN
+let tokenCache: TokenCache | null = null
 
-  if (!token) {
-    throw new Error(
-      'MICROSOFT_ACCESS_TOKEN is not set.\n' +
-      'Run: npx tsx --env-file=.env.local scripts/setup-graph-auth.ts --token <paste token>',
-    )
+async function fetchClientCredentialsToken(): Promise<string> {
+  const now = Date.now()
+
+  if (tokenCache && now < tokenCache.expiresAt) {
+    return tokenCache.token
   }
 
-  const exp = decodeJwtExp(token)
-  if (exp && Date.now() > exp * 1000) {
-    throw new Error(
-      'MICROSOFT_ACCESS_TOKEN has expired.\n' +
-      'Get a fresh token from Graph Explorer and re-run:\n' +
-      'npx tsx --env-file=.env.local scripts/setup-graph-auth.ts --token <paste token>',
-    )
+  const tenantId     = process.env.AZURE_TENANT_ID
+  const clientId     = process.env.AZURE_CLIENT_ID
+  const clientSecret = process.env.AZURE_CLIENT_SECRET
+
+  const res = await fetch(
+    `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id:     clientId!,
+        client_secret: clientSecret!,
+        scope:         'https://graph.microsoft.com/.default',
+        grant_type:    'client_credentials',
+      }),
+    },
+  )
+
+  if (!res.ok) {
+    throw new Error(`client_credentials token request failed: ${res.status} ${await res.text()}`)
   }
 
-  // Warn when less than 10 minutes remain
-  if (exp) {
-    const remaining = Math.round((exp * 1000 - Date.now()) / 60000)
-    if (remaining < 10) {
-      console.warn(`⚠  Graph token expires in ${remaining} min — refresh soon.`)
+  const data = await res.json() as { access_token: string; expires_in: number }
+
+  tokenCache = {
+    token:     data.access_token,
+    expiresAt: now + 55 * 60 * 1000,  // 55-min TTL (tokens expire at 60 min)
+  }
+
+  return tokenCache.token
+}
+
+export async function getGraphToken(): Promise<string> {
+  const tenantId     = process.env.AZURE_TENANT_ID
+  const clientId     = process.env.AZURE_CLIENT_ID
+  const clientSecret = process.env.AZURE_CLIENT_SECRET
+
+  // 1. Primary: client_credentials flow
+  if (tenantId && clientId && clientSecret) {
+    try {
+      return await fetchClientCredentialsToken()
+    } catch (err) {
+      console.warn('[graph] client_credentials failed, falling back to static token:', (err as Error).message)
     }
+  } else {
+    console.warn('[graph] client_credentials not configured, falling back to static token')
   }
 
-  return token
+  // 2. Fallback: static token from env
+  const staticToken = process.env.MICROSOFT_ACCESS_TOKEN
+  if (staticToken) {
+    return staticToken
+  }
+
+  // 3. Nothing available
+  throw new Error(
+    'No valid Graph API auth configured. ' +
+    'Set AZURE_CLIENT_ID + AZURE_CLIENT_SECRET + AZURE_TENANT_ID for permanent auth, ' +
+    'or refresh MICROSOFT_ACCESS_TOKEN.',
+  )
 }
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -71,7 +106,7 @@ export type DriveItem = {
 // ── Core fetch helpers ────────────────────────────────────────────────────────
 
 export async function graphGet<T>(path: string): Promise<T> {
-  const token = getGraphToken()
+  const token = await getGraphToken()
   const res = await fetch(`${graphBase()}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
@@ -80,7 +115,7 @@ export async function graphGet<T>(path: string): Promise<T> {
 }
 
 export async function graphPatch(path: string, body: object): Promise<Response> {
-  const token = getGraphToken()
+  const token = await getGraphToken()
   return fetch(`${graphBase()}${path}`, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -89,7 +124,7 @@ export async function graphPatch(path: string, body: object): Promise<Response> 
 }
 
 export async function graphPost(path: string, body: object): Promise<Response> {
-  const token = getGraphToken()
+  const token = await getGraphToken()
   return fetch(`${graphBase()}${path}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },

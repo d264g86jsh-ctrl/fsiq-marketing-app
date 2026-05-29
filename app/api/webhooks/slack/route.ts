@@ -10,6 +10,14 @@ import { updateMessage } from '@/lib/slack'
 import { updateAdSetBudget, pauseAdSet } from '@/lib/meta'
 import { createTask } from '@/lib/clickup'
 
+type ActionFamily = 'recommendation' | 'script'
+
+function classifyAction(action_id: string): ActionFamily | null {
+  if (action_id === 'approve_recommendation' || action_id === 'skip_recommendation') return 'recommendation'
+  if (action_id.startsWith('approve_script_') || action_id.startsWith('skip_script_')) return 'script'
+  return null
+}
+
 function verifySlackSignature(
   signingSecret: string,
   timestamp: string,
@@ -92,15 +100,85 @@ export async function POST(req: NextRequest) {
   }
 
   const action = payload.actions[0]
-  const { action_id, value: recommendationId } = action
+  const { action_id, value } = action
+  const recommendationId = value
 
-  if (action_id !== 'approve_recommendation' && action_id !== 'skip_recommendation') {
-    return NextResponse.json({ ok: true })
-  }
+  const actionFamily = classifyAction(action_id)
+  if (!actionFamily) return NextResponse.json({ ok: true })
 
-  const newStatus = action_id === 'approve_recommendation' ? 'approved' : 'skipped'
   const actorName = payload.user?.name ?? payload.user?.id ?? 'unknown'
   const now = new Date().toISOString()
+
+  // ── Script approve/skip ───────────────────────────────────────────────────
+  if (actionFamily === 'script') {
+    const isApprove = action_id.startsWith('approve_script_')
+    const pipelineId = value
+
+    const newStatus = isApprove ? 'Recording Pending' : 'Killed'
+
+    const { error: updateError } = await supabase
+      .from('creative_pipeline')
+      .update({ status: newStatus })
+      .eq('id', pipelineId)
+
+    if (updateError) {
+      console.error('[slack-webhook] creative_pipeline update failed:', updateError.message)
+      return NextResponse.json({ error: 'DB update failed' }, { status: 500 })
+    }
+
+    let taskNote = ''
+    if (isApprove) {
+      try {
+        const { data: row } = await supabase
+          .from('creative_pipeline')
+          .select('concept_name, global_number, hook_type')
+          .eq('id', pipelineId)
+          .single()
+
+        const conceptId = row?.global_number ? `FSIQ-VIDEO-AD-${row.global_number}` : pipelineId
+        const today = new Date().toISOString().slice(0, 10)
+
+        const task = await createTask({
+          name: `[SCRIPT] Ready for recording — ${row?.concept_name ?? conceptId} | ${today}`,
+          description: [
+            `Approved by: @${actorName}`,
+            `Concept: ${row?.concept_name ?? 'unknown'}`,
+            `Hook type: ${row?.hook_type ?? 'unknown'}`,
+            `Pipeline ID: ${pipelineId}`,
+          ].join('\n'),
+          priority: 2,
+          tags: ['script', 'recording'],
+        })
+        taskNote = `ClickUp: ${task.url}`
+      } catch (err) {
+        console.error('[slack-webhook] ClickUp task creation failed:', (err as Error).message)
+        taskNote = '⚠️ ClickUp task creation failed'
+      }
+    }
+
+    // Update Slack message — replace buttons with confirmation
+    const messageTs = payload.message?.ts
+    const channelId = payload.channel?.id
+    if (messageTs && channelId) {
+      const statusEmoji = isApprove ? '✅' : '❌'
+      const statusLabel = isApprove ? 'Approved for Recording' : 'Skipped'
+      const original = (payload.message?.blocks ?? []) as Array<{ type: string }>
+      const withoutActions = original.filter(b => b.type !== 'actions')
+      const confirmElements: unknown[] = [
+        { type: 'mrkdwn', text: `${statusEmoji} *${statusLabel}* by @${actorName} at <!date^${Math.floor(Date.now() / 1000)}^{time}|now>` },
+      ]
+      if (taskNote) confirmElements.push({ type: 'mrkdwn', text: taskNote })
+      await updateMessage(channelId, messageTs, `${statusEmoji} ${statusLabel} by ${actorName}`, [
+        ...withoutActions,
+        { type: 'context', elements: confirmElements },
+      ] as never[])
+    }
+
+    return NextResponse.json({ ok: true, status: newStatus, task: taskNote || null })
+  }
+
+  // ── Recommendation approve/skip (original logic) ──────────────────────────
+  const newStatus = action_id === 'approve_recommendation' ? 'approved' : 'skipped'
 
   // 1. Fetch the recommendation
   const { data: rec, error: fetchError } = await supabase
