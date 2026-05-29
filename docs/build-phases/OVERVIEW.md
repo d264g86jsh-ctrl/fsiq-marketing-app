@@ -14,7 +14,7 @@ Dashboard is the source of truth for history, analytics, and bulk management.
 ```
 Agent skill runs →
   writes to Supabase (recommendations, skill_runs, or agent-specific table) →
-  posts to Slack with action buttons →
+  posts to Slack inline with action buttons (saves slack_ts back to row) →
   Slack button click hits /api/webhooks/slack →
   updates Supabase record →
   dashboard reflects updated state in real time
@@ -24,6 +24,12 @@ Dashboard actions (approve/reject/edit) →
   update Supabase →
   optionally post confirmation to Slack
 ```
+
+## Inline vs catch-up Slack posting
+
+Skills post to Slack **inline** (immediately after writing to Supabase) and save `slack_ts` back to the recommendation row. This means the Slack message and the DB record are always in sync.
+
+`slack-notify.skill.ts` is a **catch-up fallback** — it runs after the primary skill and picks up any rows where `slack_ts IS NULL` (inline post failed). Under normal operation it sends nothing.
 
 ## Channel → Dashboard mapping
 

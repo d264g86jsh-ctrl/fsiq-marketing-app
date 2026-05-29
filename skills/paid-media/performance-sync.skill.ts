@@ -1,7 +1,8 @@
 // Skill 1.1 — paid-media.performance-sync.skill.ts
 // Runs daily at 6 AM. Pulls all active Meta ad sets, computes multi-window metrics
 // from Supabase leads table (CRM-sourced), applies SOP decision logic via Claude,
-// writes decisions to Supabase recommendations.
+// writes decisions to Supabase recommendations, then posts each to #MediaBuying inline.
+// slack-notify.skill.ts is a catch-up fallback for any that miss the inline post.
 
 import fs from 'fs'
 import path from 'path'
@@ -14,6 +15,7 @@ import {
   CampaignInsightRow,
 } from '../../lib/meta'
 import { supabase } from '../../lib/supabase'
+import { sendBlocks } from '../../lib/slack'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -577,11 +579,81 @@ Return ONLY valid JSON — no markdown:
       status: 'pending',
     }))
 
+  type InsertedRec = { id: string; body: PerformanceDecision }
+  let insertedRecs: InsertedRec[] = []
   if (toInsert.length > 0) {
-    await supabase.from('recommendations').insert(toInsert)
+    const { data: recRows } = await supabase
+      .from('recommendations')
+      .insert(toInsert)
+      .select('id, body')
+    insertedRecs = (recRows ?? []) as InsertedRec[]
   }
 
-  // 9. Upsert snapshot to ad_performance for history
+  // 9. Post each non-hold/exempt decision to #MediaBuying inline
+  //    Saves slack_ts back so slack-notify.skill.ts (catch-up) skips these
+  const ACTION_ICONS: Record<string, string> = {
+    scale_up: '⬆️', scale_down: '⬇️', kill: '🔴', insufficient_data: '❓',
+  }
+  const DS_LABELS: Record<string, string> = {
+    supabase_verified: '✅ Dual verified', sheet_sot: '📊 Sheet SOT',
+    conflict_sheet_used: '⚠️ Conflict→Sheet', attribution_pending: '⏳ Attr pending',
+  }
+
+  for (const inserted of insertedRecs) {
+    const d = inserted.body as PerformanceDecision
+    const m = metrics.find(x => x.ad_set_id === d.ad_set_id)
+    const icon = ACTION_ICONS[d.action] ?? '📋'
+    const actionLabel = d.action.toUpperCase().replace('_', ' ')
+    const adName = d.ad_set_name.length > 55 ? d.ad_set_name.slice(0, 52) + '…' : d.ad_set_name
+    const budgetLine = d.recommended_budget_usd && d.recommended_budget_usd !== d.current_budget_usd
+      ? `$${d.current_budget_usd}/day → *$${d.recommended_budget_usd}/day*`
+      : `$${d.current_budget_usd}/day (no change)`
+    const dsLabel = DS_LABELS[d.data_source ?? ''] ?? (d.data_source ?? 'unknown')
+    const fmt = (v: number | null | undefined) => v != null ? `$${v.toFixed(0)}` : 'n/a'
+    const metricsLine = [
+      `CP2QL 7d: ${fmt(m?.cp2ql_7d)}`,
+      `Leads (7d): ${m?.cp2ql_leads_7d ?? 'n/a'}`,
+      `CP3QL 7d: ${fmt(m?.cp3ql_7d)}`,
+      `CPL 7d: ${fmt(m?.cpl_7d)}`,
+      `Spend 7d: ${fmt(m?.spend_7d)}`,
+    ].join('  |  ')
+
+    const blocks = [
+      { type: 'header', text: { type: 'plain_text', text: `${icon} ${actionLabel} — ${adName}`, emoji: true } },
+      {
+        type: 'section',
+        fields: [
+          { type: 'mrkdwn', text: `*Budget*\n${budgetLine}` },
+          { type: 'mrkdwn', text: `*Confidence*\n${d.confidence}` },
+          { type: 'mrkdwn', text: `*Data Source*\n${dsLabel}` },
+          { type: 'mrkdwn', text: `*Action*\n${actionLabel}` },
+        ],
+      },
+      { type: 'section', text: { type: 'mrkdwn', text: `\`${metricsLine}\`` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Reason:* ${d.reason}` } },
+      { type: 'divider' },
+      {
+        type: 'actions',
+        elements: [
+          { type: 'button', text: { type: 'plain_text', text: '✅ Approve', emoji: true }, style: 'primary', action_id: 'approve_recommendation', value: inserted.id },
+          { type: 'button', text: { type: 'plain_text', text: '❌ Skip', emoji: true }, style: 'danger', action_id: 'skip_recommendation', value: inserted.id },
+        ],
+      },
+    ] as never[]
+
+    try {
+      const result = await sendBlocks('mediaBuying', blocks, `${icon} ${actionLabel}: ${d.ad_set_name}`)
+      if (result.ok && result.ts && result.channel) {
+        await supabase.from('recommendations')
+          .update({ slack_ts: result.ts, slack_channel: result.channel })
+          .eq('id', inserted.id)
+      }
+    } catch (err) {
+      console.warn(`[performance-sync] Slack post failed for ${d.ad_set_name}:`, (err as Error).message)
+    }
+  }
+
+  // 10. Upsert snapshot to ad_performance for history
   const perfUpserts = metrics.map(m => ({
     ad_set_id:    m.ad_set_id,
     ad_set_name:  m.ad_set_name,
@@ -611,7 +683,7 @@ Return ONLY valid JSON — no markdown:
   }))
   await supabase.from('ad_performance').upsert(perfUpserts, { onConflict: 'ad_set_id' })
 
-  // 10. Log skill run
+  // 11. Log skill run
   const actionCounts = decisions.reduce(
     (acc, d) => { acc[d.action] = (acc[d.action] ?? 0) + 1; return acc },
     {} as Record<string, number>

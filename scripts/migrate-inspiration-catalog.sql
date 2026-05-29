@@ -1,23 +1,35 @@
--- Migration: create inspiration_catalog table and add extended columns
+-- Migration: inspiration_catalog — fully idempotent
+-- Safe to run multiple times. Handles both fresh installs and pre-existing tables.
 -- Run in Supabase SQL editor.
--- All statements are idempotent (IF NOT EXISTS / IF NOT EXISTS column).
 
+-- Step 1: create table if it doesn't exist yet (minimal required columns)
 CREATE TABLE IF NOT EXISTS inspiration_catalog (
-  id                  uuid         PRIMARY KEY DEFAULT gen_random_uuid(),
-  library_id          TEXT         UNIQUE,          -- Meta ad archive ID (stable dedup key)
-  source_page         TEXT         NOT NULL,        -- page name from config
-  ad_type             TEXT,                         -- 'video' | 'static'
-  media_type          TEXT,                         -- raw meta media_type field
-  headline            TEXT,                         -- ad_creative_link_titles[0]
-  body_text           TEXT,                         -- ad_creative_bodies[0]
-  snapshot_url        TEXT,                         -- ad_snapshot_url
-  publisher_platforms TEXT[],                       -- e.g. ['facebook', 'instagram']
-  delivery_start_time TIMESTAMPTZ,                  -- ad_delivery_start_time
-  scraped_at          TIMESTAMPTZ  DEFAULT now(),
-  used                BOOLEAN      DEFAULT false,
-  created_at          TIMESTAMPTZ  DEFAULT now()
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Step 2: add all columns (idempotent — each is IF NOT EXISTS)
+ALTER TABLE inspiration_catalog
+  ADD COLUMN IF NOT EXISTS library_id          TEXT UNIQUE,
+  ADD COLUMN IF NOT EXISTS source_page         TEXT,
+  ADD COLUMN IF NOT EXISTS ad_type             TEXT,
+  ADD COLUMN IF NOT EXISTS media_type          TEXT,
+  ADD COLUMN IF NOT EXISTS headline            TEXT,
+  ADD COLUMN IF NOT EXISTS body_text           TEXT,
+  ADD COLUMN IF NOT EXISTS snapshot_url        TEXT,
+  ADD COLUMN IF NOT EXISTS video_url           TEXT,
+  ADD COLUMN IF NOT EXISTS video_thumbnail     TEXT,
+  ADD COLUMN IF NOT EXISTS image_url           TEXT,
+  ADD COLUMN IF NOT EXISTS cta_text            TEXT,
+  ADD COLUMN IF NOT EXISTS cta_type            TEXT,
+  ADD COLUMN IF NOT EXISTS link_url            TEXT,
+  ADD COLUMN IF NOT EXISTS publisher_platforms TEXT[],
+  ADD COLUMN IF NOT EXISTS delivery_start_time TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS is_active           BOOL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS scraped_at          TIMESTAMPTZ DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS used                BOOLEAN DEFAULT false;
+
+-- Step 3: indexes
 CREATE INDEX IF NOT EXISTS inspiration_catalog_library_id_idx  ON inspiration_catalog (library_id);
 CREATE INDEX IF NOT EXISTS inspiration_catalog_ad_type_idx     ON inspiration_catalog (ad_type);
 CREATE INDEX IF NOT EXISTS inspiration_catalog_used_idx        ON inspiration_catalog (used);

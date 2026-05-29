@@ -1,7 +1,8 @@
-// Skill 1.2 — slack-notify.skill.ts
-// Reads pending paid-media recommendations from Supabase (no slack_ts yet),
-// deduplicates per ad_set_id, builds Block Kit approve/skip messages,
-// posts to #MediaBuying, and saves slack_ts + slack_channel back to the row.
+// Skill 1.2 — slack-notify.skill.ts  [CATCH-UP ONLY]
+// performance-sync.skill.ts posts to #MediaBuying inline immediately after writing
+// recommendations. This skill is a safety net — it runs after performance-sync and
+// picks up any recommendations that still have no slack_ts (e.g. if the inline post
+// failed due to a transient Slack error). Under normal operation it sends nothing.
 
 import fs from 'fs'
 import path from 'path'

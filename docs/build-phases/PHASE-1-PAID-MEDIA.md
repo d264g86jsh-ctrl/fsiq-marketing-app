@@ -19,10 +19,10 @@
 | script-generator.skill.ts | 🔄 In Progress |
 | campaign-brief-generator.skill.ts | ⏳ Pending |
 | footage-watcher.skill.ts | ⏳ Pending |
-| ghl-webhook-summary.skill.ts | ⏳ Pending |
-| supabase-accuracy-audit.skill.ts | ⏳ Pending |
+| ghl-webhook-summary.skill.ts | ✅ Complete |
+| supabase-accuracy-audit.skill.ts | ✅ Complete |
 | static-creator.skill.ts | ⏳ Pending |
-| slack-notify.skill.ts | ⏳ Pending |
+| slack-notify.skill.ts | ✅ Complete (catch-up fallback) |
 | sharepoint-structure-agent.skill.ts | ⏳ Pending |
 | paid-media.agent.ts (orchestrator) | ⏳ Pending |
 
@@ -106,3 +106,10 @@ All button handlers → `/api/webhooks/slack`
 | `approve_script` | Move creative_pipeline status to 'Recording Pending' + trigger campaign-brief-generator |
 | `reject_script` | Move status to 'Killed' |
 | `approve_static` | Trigger static-creator Canva flow |
+
+---
+
+## Skill notes
+
+### ghl-webhook-summary
+Slack-only (`#MediaBuying`). Weekly report of processed vs skipped GHL events. No dashboard section needed — raw data available in `skill_runs` table for ad-hoc queries. Not an actionable decision; informational only.

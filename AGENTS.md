@@ -59,12 +59,50 @@ Before completing any skill PR, confirm:
 | Channel | Env var | What goes here |
 |---------|---------|----------------|
 | `#operations` | `SLACK_CHANNEL_MEETING_TRANSCRIPTS` | **READ-ONLY. Agents NEVER post here.** Used by team for meeting transcript links only. |
-| `#assistant` | `SLACK_CHANNEL_ASSISTANT` | SharePoint structure violations, naming violations, missing subfolders, weekly SharePoint audit report, any structural/housekeeping alerts |
-| `#MediaBuying` | `SLACK_CHANNEL_MEDIA_BUYING` | Ad set decisions (scale/kill/hold), budget change confirmations, pixel issues, app health / Food Cost Analyzer alerts, Supabase accuracy alerts, GHL webhook summary, any critical paid media system alert |
+| `#assistant` | `SLACK_CHANNEL_ASSISTANT` | App health / Food Cost Analyzer alerts, SharePoint structure violations, naming violations, missing subfolders, weekly SharePoint audit report, any structural/housekeeping alerts |
+| `#MediaBuying` | `SLACK_CHANNEL_MEDIA_BUYING` | Ad set decisions (scale/kill/hold), budget change confirmations, pixel issues, Supabase accuracy alerts, GHL webhook summary, any critical paid media system alert |
 | `#video-editor` | `SLACK_CHANNEL_VIDEO_EDITOR` | New footage detected, script match results (below 85% confidence), brief generation confirmations, QA feedback requests |
 | `#seo-agent` | `SLACK_CHANNEL_SEO` | Rank changes, blog post drafts ready for review, GMB update suggestions, technical audit findings, backlink opportunities |
 | `#organic-agent` | `SLACK_CHANNEL_ORGANIC` | Content ideas ready for review, LinkedIn drafts for Neil and FSIQ page, Ads Library daily digest |
 | `#morning-brief` | `SLACK_CHANNEL_MORNING_BRIEF` | Daily CMO summary only |
 
 **Enforcement:** Every skill that posts to Slack must use one of the channel keys from `lib/slack.ts`. Never hardcode channel names or IDs. Never reference `SLACK_CHANNEL_OPERATIONS`.
+
 <!-- END:channel-rules -->
+
+<!-- BEGIN:skill-output-pattern -->
+# SKILL OUTPUT PATTERN (mandatory)
+
+Every skill that produces a decision or actionable output must follow this sequence inside `run()`:
+
+```typescript
+export async function run(): Promise<SkillOutput> {
+  // 1. Load SOPs via fs.readFileSync (required per SOP ↔ SKILL PAIRING rule)
+  // 2. Fetch data / run logic / call Claude if needed
+  // 3. Write results to Supabase (recommendations, skill_runs, agent-specific table)
+  // 4. Post to designated Slack channel as the FINAL step
+  //    → Save slack_ts + slack_channel back to the Supabase record
+  // 5. Log to skill_runs
+  // 6. Return typed SkillOutput
+}
+```
+
+**Skills never depend on a separate notification skill to communicate their output.**
+
+`slack-notify.skill.ts` is a catch-up safety net only. It runs at 6:15 AM and picks up any recommendations where `slack_ts IS NULL` — i.e., ones where the inline post inside `run()` failed. Under normal operation it sends nothing.
+
+## Which skills own which Slack channel
+
+| Skill | Slack channel | Table written |
+|-------|--------------|---------------|
+| `performance-sync` | `#MediaBuying` | `recommendations`, `ad_performance` |
+| `pixel-monitor` | `#MediaBuying` | `skill_runs` |
+| `app-health-monitor` | `#assistant` | `skill_runs` |
+| `ads-library-scraper` | `#organic-agent` | `inspiration_catalog`, `skill_runs` |
+| `ghl-webhook-summary` | `#MediaBuying` | `skill_runs` |
+| `supabase-accuracy-audit` | `#assistant` | `accuracy_audit`, `leads`, `skill_runs` |
+| `sharepoint-structure-agent` | `#assistant` | `skill_runs` |
+| `script-generator` | `#MediaBuying` | `creative_pipeline`, `skill_runs` |
+| `campaign-brief-generator` | `#video-editor` | `skill_runs` |
+| `footage-watcher` | `#video-editor` | `skill_runs` |
+<!-- END:skill-output-pattern -->
