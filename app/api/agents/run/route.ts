@@ -20,6 +20,7 @@ const SKILL_REGISTRY: Record<string, () => Promise<any>> = {
   'paid-media:ads-library-scraper': () => import('@/skills/paid-media/ads-library-scraper.skill'),
   'paid-media:script-generator': () => import('@/skills/paid-media/script-generator.skill'),
   'paid-media:campaign-brief-generator': () => import('@/skills/paid-media/campaign-brief-generator.skill'),
+  'paid-media:script-matcher':           () => import('@/skills/paid-media/script-matcher.skill'),
   'paid-media:static-creator':   () => import('@/skills/paid-media/static-creator.skill'),
   'seo:rank-tracker':            () => import('@/skills/seo/rank-tracker.skill'),
   'seo:blog-writer':             () => import('@/skills/seo/blog-writer.skill'),

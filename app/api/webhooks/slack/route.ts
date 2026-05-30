@@ -25,7 +25,7 @@ import path from 'path'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type ActionFamily = 'recommendation' | 'script' | 'topic' | 'variation' | 'test' | 'linkedin'
+type ActionFamily = 'recommendation' | 'script' | 'topic' | 'variation' | 'test' | 'linkedin' | 'footage'
 
 interface BlockActionsPayload {
   type: 'block_actions'
@@ -84,6 +84,11 @@ function classifyAction(action_id: string): ActionFamily | null {
     action_id.startsWith('skip_linkedin_') ||
     action_id.startsWith('edit_linkedin_')
   ) return 'linkedin'
+  if (
+    action_id.startsWith('confirm_script_') ||
+    action_id.startsWith('select_script_') ||
+    action_id.startsWith('no_script_yet_')
+  ) return 'footage'
   return null
 }
 
@@ -291,7 +296,38 @@ export async function POST(req: NextRequest) {
     const actorName = vp.user?.name ?? vp.user?.id ?? 'unknown'
 
     if (metadata && editedText) {
-      if (metadata.startsWith('linkedin:')) {
+      if (metadata.startsWith('select_script:')) {
+        // Manual script selection for footage review
+        const footageLogId = metadata.replace('select_script:', '')
+        await supabase
+          .from('footage_log')
+          .update({ matched_script: editedText, status: 'matched' })
+          .eq('id', footageLogId)
+
+        const { data: footage } = await supabase
+          .from('footage_log')
+          .select('ad_id, concept_folder, matched_ad_id, match_confidence')
+          .eq('id', footageLogId)
+          .single()
+
+        try {
+          const { run } = await import('@/skills/paid-media/campaign-brief-generator.skill')
+          await run({
+            conceptId:    footage?.ad_id ?? footage?.concept_folder ?? footageLogId,
+            footageLogId,
+            matchedScript: {
+              matched_script_name: editedText,
+              matched_ad_id:       footage?.matched_ad_id ?? null,
+              confidence:          footage?.match_confidence ?? 0,
+              matching_elements:   [],
+              reasoning:           `Manually selected by @${actorName}`,
+              full_text:           '',
+            },
+          })
+        } catch (err) {
+          console.error('[slack-webhook] campaign-brief-generator after select_script failed:', (err as Error).message)
+        }
+      } else if (metadata.startsWith('linkedin:')) {
         // LinkedIn draft edit
         const draftId = metadata.replace('linkedin:', '')
         const { data: draft } = await supabase
@@ -704,6 +740,121 @@ export async function POST(req: NextRequest) {
         { type: 'context', elements: confirmBlock('✅', 'Draft approved — ready to post', actorName) },
       ] as never[])
     }
+
+    return NextResponse.json({ ok: true })
+  }
+
+  // ── Footage script confirmation (from script-matcher <85% review flow) ──────
+  if (actionFamily === 'footage') {
+    const footageLogId = value
+
+    if (action_id.startsWith('no_script_yet_')) {
+      await supabase
+        .from('footage_log')
+        .update({ status: 'awaiting_script' })
+        .eq('id', footageLogId)
+
+      const { data: footage } = await supabase
+        .from('footage_log')
+        .select('concept_folder, ad_id, file_name')
+        .eq('id', footageLogId)
+        .single()
+
+      await sendBlocks(
+        'mediaBuying',
+        [{
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `⚠️ *Footage uploaded but no script exists yet*\nConcept: *${footage?.ad_id ?? footage?.concept_folder ?? footageLogId}*\nFile: \`${footage?.file_name ?? '—'}\`\n\nAdd the script to the Ad Scripting Google Doc first, then script-matcher will retry.`,
+          },
+        }] as never[],
+        `⚠️ No script yet for ${footage?.ad_id ?? footageLogId}`,
+      )
+
+      if (messageTs && channelId) {
+        const original = (bp.message?.blocks ?? []) as Array<{ type: string }>
+        const withoutActions = original.filter(b => b.type !== 'actions')
+        await updateMessage(channelId, messageTs, `⚠️ No script yet — flagged for @${actorName}`, [
+          ...withoutActions,
+          { type: 'context', elements: confirmBlock('⚠️', 'No script yet — add to Ad Scripting doc', actorName) },
+        ] as never[])
+      }
+
+      return NextResponse.json({ ok: true })
+    }
+
+    if (action_id.startsWith('select_script_')) {
+      const triggerId = bp.trigger_id
+      if (triggerId) {
+        // Fetch available scripts from DB snapshot or just open a free-text modal
+        await openModal(triggerId, {
+          type:  'modal',
+          title: { type: 'plain_text', text: 'Select Script' },
+          submit: { type: 'plain_text', text: 'Confirm' },
+          close:  { type: 'plain_text', text: 'Cancel' },
+          private_metadata: `select_script:${footageLogId}`,
+          blocks: [
+            {
+              type:     'input',
+              block_id: 'script_edit_block',
+              label:    { type: 'plain_text', text: 'Script name (from Ad Scripting doc)' },
+              element: {
+                type:      'plain_text_input',
+                action_id: 'script_text',
+                multiline: false,
+                placeholder: { type: 'plain_text', text: 'e.g. FSIQ-VIDEO-AD-18 Holiday Gift Script' },
+              },
+            },
+          ],
+        })
+      }
+      return NextResponse.json({ ok: true })
+    }
+
+    // confirm_script_ — treat matched script as confirmed, trigger brief generator
+    await supabase
+      .from('footage_log')
+      .update({ status: 'matched' })
+      .eq('id', footageLogId)
+
+    const { data: footage } = await supabase
+      .from('footage_log')
+      .select('ad_id, concept_folder, file_name, matched_script, matched_ad_id, match_confidence')
+      .eq('id', footageLogId)
+      .single()
+
+    if (messageTs && channelId) {
+      const original = (bp.message?.blocks ?? []) as Array<{ type: string }>
+      const withoutActions = original.filter(b => b.type !== 'actions')
+      await updateMessage(channelId, messageTs, `✅ Script confirmed by @${actorName} — generating brief...`, [
+        ...withoutActions,
+        { type: 'context', elements: confirmBlock('✅', 'Script confirmed — generating campaign brief…', actorName) },
+      ] as never[])
+    }
+
+    const capturedFootageLogId = footageLogId
+    const capturedFootage      = footage
+
+    after(async () => {
+      try {
+        const { run } = await import('@/skills/paid-media/campaign-brief-generator.skill')
+        await run({
+          conceptId:    capturedFootage?.ad_id ?? capturedFootage?.concept_folder ?? capturedFootageLogId,
+          footageLogId: capturedFootageLogId,
+          matchedScript: {
+            matched_script_name: capturedFootage?.matched_script ?? '',
+            matched_ad_id:       capturedFootage?.matched_ad_id ?? null,
+            confidence:          capturedFootage?.match_confidence ?? 0,
+            matching_elements:   [],
+            reasoning:           `Manually confirmed by @${actorName}`,
+            full_text:           '',
+          },
+        })
+      } catch (err) {
+        console.error('[slack-webhook] campaign-brief-generator failed:', (err as Error).message)
+      }
+    })
 
     return NextResponse.json({ ok: true })
   }

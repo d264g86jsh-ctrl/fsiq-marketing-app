@@ -53,6 +53,10 @@
       "schedule": "5 * * * *"
     },
     {
+      "path": "/api/agents/run?agent=paid-media&skill=script-matcher",
+      "schedule": "*/30 * * * *"
+    },
+    {
       "path": "/api/agents/run?agent=seo&skill=rank-tracker",
       "schedule": "0 7 * * *"
     },
