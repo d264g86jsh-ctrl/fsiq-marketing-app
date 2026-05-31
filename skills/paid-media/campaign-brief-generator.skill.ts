@@ -42,13 +42,16 @@ const DOCX_MIME            = 'application/vnd.openxmlformats-officedocument.word
 // paraIds of every replaceable text node in the template.
 // These are stable identifiers baked into the approved .docx XML.
 const PARA = {
-  AD_ID:     '00000004',
-  NUM_HOOKS: '00000006',
-  NUM_BODIES:'00000008',
-  NUM_CTAS:  '0000000A',
-  HOOK_TEXT: '0000000C',
-  BODY_TEXT: '0000000E',
-  CTA_TEXT:  '00000010',
+  AD_ID:      '00000004',
+  NUM_HOOKS:  '00000006',
+  NUM_BODIES: '00000008',
+  NUM_CTAS:   '0000000A',
+  HOOK_LABEL: '0000000B',  // "HOOK" section header (blue, 13pt)
+  HOOK_TEXT:  '0000000C',  // hook text paragraph (black, 11pt)
+  BODY_LABEL: '0000000D',  // "BODY" section header
+  BODY_TEXT:  '0000000E',
+  CTA_LABEL:  '0000000F',  // "CALL TO ACTION" section header (blue, 13pt)
+  CTA_TEXT:   '00000010',
 } as const
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -74,13 +77,24 @@ export interface CampaignBriefOutput {
   error?:    string
 }
 
+export interface ParsedSection {
+  label: string
+  text:  string
+}
+
+export interface ParsedScript {
+  hooks:  ParsedSection[]
+  bodies: ParsedSection[]
+  ctas:   ParsedSection[]
+}
+
 // ── Script parser ─────────────────────────────────────────────────────────────
 
-function stripTags(text: string): string {
+function stripBracketTags(text: string): string {
   return text
     .replace(/\[HOOK-IPHONE[^\]]*\]/gi, '')
     .replace(/\[HOOK-STUDIO[^\]]*\]/gi, '')
-    .replace(/\[HOOK\s*-?\s*\d+[^\]]*\]/gi, '')
+    .replace(/\[HOOK\s*-?\s*[\d]+[^\]]*\]/gi, '')
     .replace(/\[HOOK[^\]]*\]/gi, '')
     .replace(/\[BODY[^\]]*\]/gi, '')
     .replace(/\[MIDDLE[^\]]*\]/gi, '')
@@ -89,7 +103,20 @@ function stripTags(text: string): string {
     .trim()
 }
 
+// All section-marker regexes — used as "end" boundaries for extractBetween
+const ALL_END_MARKERS: RegExp[] = [
+  /\[HOOK-IPHONE[^\]]*\]/gi,
+  /\[HOOK-STUDIO[^\]]*\]/gi,
+  /\[HOOK\s*-?\s*\d+[^\]]*\]/gi,
+  /\[HOOK[^\]]*\]/gi,
+  /\[BODY[^\]]*\]/gi,
+  /\[MIDDLE[^\]]*\]/gi,
+  /\[CALL TO ACTION[^\]]*\]/gi,
+  /\[CTA[^\]]*\]/gi,
+]
+
 function extractBetween(text: string, startRe: RegExp, endRes: RegExp[]): string {
+  startRe.lastIndex = 0
   const sm = startRe.exec(text)
   if (!sm) return ''
   let end = text.length
@@ -98,58 +125,221 @@ function extractBetween(text: string, startRe: RegExp, endRes: RegExp[]): string
     const em = re.exec(text)
     if (em && em.index < end) end = em.index
   }
-  return stripTags(text.slice(sm.index + sm[0].length, end))
+  return stripBracketTags(text.slice(sm.index + sm[0].length, end))
 }
 
-interface ParsedScript {
-  hookText:  string
-  bodyText:  string
-  ctaText:   string
-  numHooks:  number
-}
+// ── Bracket format parser: [HOOK 1], [BODY], [CTA] ─────────────────────────
 
-function parseScript(fullText: string): ParsedScript {
-  const hasBrackets = /\[HOOK/i.test(fullText)
+function parseBracketFormat(fullText: string): ParsedScript {
+  const hooks:  ParsedSection[] = []
+  const bodies: ParsedSection[] = []
+  const ctas:   ParsedSection[] = []
 
-  if (!hasBrackets) {
-    const lines = fullText.split('\n').filter(l => l.trim())
-    return {
-      hookText: lines.slice(0, 3).join(' '),
-      bodyText: lines.slice(3, -2).join(' '),
-      ctaText:  lines.slice(-2).join(' '),
-      numHooks: 1,
+  // --- Hooks ---
+
+  // Numbered: [HOOK 1], [HOOK-1], [HOOK 2], etc.
+  const numberedRe = /\[HOOK[\s-](\d+)[^\]]*\]/gi
+  let m: RegExpExecArray | null
+  const numberedHooks: Array<{n: number; label: string; matchStr: string}> = []
+  while ((m = numberedRe.exec(fullText)) !== null) {
+    numberedHooks.push({ n: parseInt(m[1]), label: `HOOK ${m[1]}`, matchStr: m[0] })
+  }
+
+  if (numberedHooks.length > 0) {
+    numberedHooks.sort((a, b) => a.n - b.n)
+    for (const {label, matchStr} of numberedHooks) {
+      const re = new RegExp(matchStr.replace(/[[\]]/g, '\\$&'), 'i')
+      const text = extractBetween(fullText, re, ALL_END_MARKERS)
+      if (text) hooks.push({ label, text })
     }
   }
 
-  const endAll = [
-    /\[HOOK-IPHONE[^\]]*\]/gi,
-    /\[HOOK-STUDIO[^\]]*\]/gi,
-    /\[HOOK\s*-?\s*\d+[^\]]*\]/gi,
-    /\[HOOK[^\]]*\]/gi,
-    /\[BODY[^\]]*\]/gi,
-    /\[MIDDLE[^\]]*\]/gi,
-    /\[CALL TO ACTION[^\]]*\]/gi,
-    /\[CTA[^\]]*\]/gi,
-  ]
+  // Named: [HOOK-IPHONE], [HOOK-STUDIO]
+  if (hooks.length === 0) {
+    const iphoneText = extractBetween(fullText, /\[HOOK-IPHONE[^\]]*\]/i, ALL_END_MARKERS.slice(1))
+    if (iphoneText) hooks.push({ label: 'HOOK (iPhone)', text: iphoneText })
 
-  // Count distinct hook sections
-  const hookTags = fullText.match(/\[HOOK[^\]]*\]/gi) ?? []
-  const numHooks = Math.max(hookTags.length, 1)
+    const studioText = extractBetween(fullText, /\[HOOK-STUDIO[^\]]*\]/i, ALL_END_MARKERS.slice(2))
+    if (studioText) hooks.push({ label: 'HOOK (Studio)', text: studioText })
+  }
 
-  // Use the first hook tag's text
-  const hookText =
-    extractBetween(fullText, /\[HOOK-IPHONE[^\]]*\]/i, endAll.slice(1)) ||
-    extractBetween(fullText, /\[HOOK-STUDIO[^\]]*\]/i, endAll.slice(2)) ||
-    extractBetween(fullText, /\[HOOK[^\]]*\]/i,        endAll.slice(4))
+  // Generic: [HOOK]
+  if (hooks.length === 0) {
+    const genericText = extractBetween(fullText, /\[HOOK\b[^\]]*\]/i, ALL_END_MARKERS.slice(4))
+    if (genericText) hooks.push({ label: 'HOOK', text: genericText })
+  }
 
-  const bodyText =
-    extractBetween(fullText, /\[(?:BODY|MIDDLE)[^\]]*\]/i,
-      [/\[CALL TO ACTION[^\]]*\]/gi, /\[CTA[^\]]*\]/gi])
+  // --- Body ---
 
-  const ctaText =
-    extractBetween(fullText, /\[(?:CALL TO ACTION|CTA)[^\]]*\]/i, [])
+  const bodyText = extractBetween(
+    fullText,
+    /\[(?:BODY|MIDDLE)[^\]]*\]/i,
+    [/\[CALL TO ACTION[^\]]*\]/gi, /\[CTA[^\]]*\]/gi],
+  )
+  if (bodyText) bodies.push({ label: 'BODY', text: bodyText })
 
-  return { hookText, bodyText, ctaText, numHooks }
+  // --- CTAs ---
+
+  // Numbered: [CTA 1], [CTA 2]
+  const ctaNumberedRe = /\[CTA\s+(\d+)[^\]]*\]/gi
+  const numberedCtas: Array<{n: number; label: string; matchStr: string}> = []
+  while ((m = ctaNumberedRe.exec(fullText)) !== null) {
+    numberedCtas.push({ n: parseInt(m[1]), label: `CTA ${m[1]}`, matchStr: m[0] })
+  }
+
+  if (numberedCtas.length > 0) {
+    numberedCtas.sort((a, b) => a.n - b.n)
+    const ctaEnd = [/\[CALL TO ACTION[^\]]*\]/gi, /\[CTA[^\]]*\]/gi]
+    for (const {label, matchStr} of numberedCtas) {
+      const re = new RegExp(matchStr.replace(/[[\]]/g, '\\$&'), 'i')
+      const text = extractBetween(fullText, re, ctaEnd)
+      if (text) ctas.push({ label, text })
+    }
+  }
+
+  // Generic: [CTA] or [CALL TO ACTION]
+  if (ctas.length === 0) {
+    const ctaText = extractBetween(fullText, /\[(?:CALL TO ACTION|CTA)[^\]]*\]/i, [])
+    if (ctaText) ctas.push({ label: 'CTA', text: ctaText })
+  }
+
+  return { hooks, bodies, ctas }
+}
+
+// ── Section header + inline label parser ─────────────────────────────────────
+//
+// Handles historical doc format:
+//   HOOKS                         ← section header
+//   Hook 1: text...               ← inline hook label
+//   Hook 1.1: text...
+//   Hook 6A: text...
+//   BODY                          ← section header
+//   text...                       ← body continuation
+//   CTAs                          ← section header
+//   CTA 1 (Book a Call): text...  ← inline CTA label
+//   CTA 2 (Case Study): text...
+//
+// Also handles:
+//   Body: text...                 ← inline body label
+//   Studio CTA 1: text...         ← Studio CTA prefix
+//   Core Body                     ← alternate header
+
+function parseSectionHeaderFormat(fullText: string): ParsedScript {
+  const hooks:  ParsedSection[] = []
+  const bodies: ParsedSection[] = []
+  const ctas:   ParsedSection[] = []
+
+  const lines = fullText.split('\n')
+  type State = 'start' | 'hooks' | 'body' | 'ctas'
+  let state: State = 'start'
+  const bodyAccum: string[] = []
+
+  function flushBody() {
+    if (bodyAccum.length > 0) {
+      const text = bodyAccum.join(' ').trim()
+      if (text) bodies.push({ label: 'BODY', text })
+      bodyAccum.length = 0
+    }
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim()
+    if (!line || line.startsWith('#')) continue  // skip blank / comment lines
+
+    // Section header: HOOKS / BODY / CTAs
+    if (/^HOOKS?\s*$/i.test(line)) {
+      flushBody()
+      state = 'hooks'
+      continue
+    }
+    if (/^(?:BODY|Core Body|SHARED BODY)\s*$/i.test(line)) {
+      flushBody()
+      state = 'body'
+      continue
+    }
+    if (/^(?:Studio\s+)?CTAs?\s*$/i.test(line) || /^CALL TO ACTION\s*$/i.test(line) || /^iPhone CTAs?\s*$/i.test(line)) {
+      flushBody()
+      state = 'ctas'
+      continue
+    }
+
+    // Hook inline: "Hook 1: text" or "Hook 1.1: text" or "Hook 6A: text"
+    const hookMatch = line.match(/^Hook\s+([\w.]+)\s*:\s*(.+)$/i)
+    if (hookMatch) {
+      const label = `Hook ${hookMatch[1]}`
+      const text  = hookMatch[2].trim()
+      if (text) hooks.push({ label, text })
+      if (state !== 'hooks') state = 'hooks'
+      continue
+    }
+
+    // Body inline: "Body: text"
+    const bodyInlineMatch = line.match(/^(?:Core\s+)?Body\s*:\s*(.+)$/i)
+    if (bodyInlineMatch) {
+      flushBody()
+      const text = bodyInlineMatch[1].trim()
+      if (text) bodies.push({ label: 'BODY', text })
+      state = 'body'
+      continue
+    }
+
+    // CTA inline: "CTA 1 (label): text" or "Studio CTA 1: text"
+    const ctaMatch = line.match(/^(?:Studio\s+)?CTA\s+([\w\s().,-]+?)\s*:\s*(.+)$/i)
+    if (ctaMatch) {
+      const label = `CTA ${ctaMatch[1].trim()}`
+      const text  = ctaMatch[2].trim()
+      if (text) ctas.push({ label, text })
+      if (state !== 'ctas') state = 'ctas'
+      continue
+    }
+
+    // Continuation line
+    if (state === 'body') {
+      if (bodies.length > 0) {
+        // Append to existing body
+        bodies[bodies.length - 1].text += ' ' + line
+      } else {
+        bodyAccum.push(line)
+      }
+    }
+  }
+
+  flushBody()
+  return { hooks, bodies, ctas }
+}
+
+// ── Fallback parser ───────────────────────────────────────────────────────────
+
+function parseFallback(fullText: string): ParsedScript {
+  const lines = fullText.split('\n').filter(l => l.trim())
+  return {
+    hooks:  [{ label: 'HOOK', text: lines.slice(0, 3).join(' ') }],
+    bodies: [{ label: 'BODY', text: lines.slice(3, -2).join(' ') }],
+    ctas:   [{ label: 'CTA',  text: lines.slice(-2).join(' ') }],
+  }
+}
+
+// ── Main parseScript export ───────────────────────────────────────────────────
+
+export function parseScript(fullText: string): ParsedScript {
+  const hasBrackets = /\[HOOK/i.test(fullText) || /\[BODY\]/i.test(fullText)
+
+  if (hasBrackets) {
+    return parseBracketFormat(fullText)
+  }
+
+  // Section header or inline label format
+  if (
+    /^HOOKS?\s*$/im.test(fullText) ||
+    /^(?:BODY|Core Body)\s*$/im.test(fullText) ||
+    /^(?:Studio\s+)?CTAs?\s*$/im.test(fullText) ||
+    /^Hook\s+[\w.]+\s*:/im.test(fullText) ||
+    /^(?:Studio\s+)?CTA\s+[\w]/im.test(fullText)
+  ) {
+    return parseSectionHeaderFormat(fullText)
+  }
+
+  return parseFallback(fullText)
 }
 
 // ── XML / template helpers ────────────────────────────────────────────────────
@@ -181,7 +371,6 @@ function replaceParaText(xml: string, paraId: string, newText: string): string {
       (_rm: string, rOpen: string, rInner: string, rClose: string) => {
         runIdx++
         if (runIdx === 1) {
-          // First run: replace (or inject) the <w:t> with new text
           let newRI = rInner.replace(
             /<w:t[^>]*>[\s\S]*?<\/w:t>/g,
             `<w:t xml:space="preserve">${escaped}</w:t>`,
@@ -191,7 +380,6 @@ function replaceParaText(xml: string, paraId: string, newText: string): string {
           }
           return `${rOpen}${newRI}${rClose}`
         }
-        // Extra runs: blank their text
         return `${rOpen}${rInner.replace(/<w:t[^>]*>[\s\S]*?<\/w:t>/g, '<w:t></w:t>')}${rClose}`
       },
     )
@@ -199,9 +387,37 @@ function replaceParaText(xml: string, paraId: string, newText: string): string {
   })
 }
 
+// Build the XML for one extra hook paragraph pair (label + text).
+// Clones the exact styling from the template's HOOK label (blue, 13pt, bold)
+// and HOOK text (black, 11pt, normal) paragraphs.
+function buildExtraHookXml(hookNumber: number, hookText: string): string {
+  const escaped = xmlEscape(hookText)
+  const labelId = `EE${String(hookNumber).padStart(6, '0')}`
+  const textId  = `EF${String(hookNumber).padStart(6, '0')}`
+
+  const labelXml = `<w:p w:rsidRDefault="00000000" w14:paraId="${labelId}" wp14:textId="77777777"><w:pPr><w:spacing w:before="320" w:after="120" w:lineRule="auto"/><w:rPr/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Arial" w:cs="Arial"/><w:b w:val="1"/><w:bCs w:val="1"/><w:color w:val="2e4057"/><w:sz w:val="26"/><w:szCs w:val="26"/><w:rtl w:val="0"/></w:rPr><w:t xml:space="preserve">HOOK ${hookNumber}</w:t></w:r></w:p>`
+  const textXml  = `<w:p w:rsidRDefault="00000000" w14:paraId="${textId}" wp14:textId="77777777"><w:pPr><w:spacing w:before="40" w:after="120" w:lineRule="auto"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Arial" w:cs="Arial"/><w:b w:val="0"/><w:bCs w:val="0"/><w:color w:val="000000"/><w:sz w:val="22"/><w:szCs w:val="22"/><w:rtl w:val="0"/></w:rPr><w:t xml:space="preserve">${escaped}</w:t></w:r></w:p>`
+
+  return labelXml + textXml
+}
+
+// Build the XML for one extra CTA paragraph pair (label + text).
+function buildExtraCtaXml(ctaNumber: number, ctaText: string): string {
+  const escaped = xmlEscape(ctaText)
+  const labelId = `FC${String(ctaNumber).padStart(6, '0')}`
+  const textId  = `FD${String(ctaNumber).padStart(6, '0')}`
+
+  const labelXml = `<w:p w:rsidRDefault="00000000" w14:paraId="${labelId}" wp14:textId="77777777"><w:pPr><w:spacing w:before="320" w:after="120" w:lineRule="auto"/><w:rPr/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Arial" w:cs="Arial"/><w:b w:val="1"/><w:bCs w:val="1"/><w:color w:val="2e4057"/><w:sz w:val="26"/><w:szCs w:val="26"/><w:rtl w:val="0"/></w:rPr><w:t xml:space="preserve">CTA ${ctaNumber}</w:t></w:r></w:p>`
+  const textXml  = `<w:p w:rsidRDefault="00000000" w14:paraId="${textId}" wp14:textId="77777777"><w:pPr><w:spacing w:before="40" w:after="120" w:lineRule="auto"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Arial" w:cs="Arial"/><w:b w:val="0"/><w:bCs w:val="0"/><w:color w:val="000000"/><w:sz w:val="22"/><w:szCs w:val="22"/><w:rtl w:val="0"/></w:rPr><w:t xml:space="preserve">${escaped}</w:t></w:r></w:p>`
+
+  return labelXml + textXml
+}
+
 async function fillTemplate(
   templateBuffer: Buffer,
   values: Record<string, string>,
+  extraHooks?: string[],  // hooks[1..n] text — hooks[0] is handled via values
+  extraCtas?: string[],   // ctas[1..n] text — ctas[0] is handled via values
 ): Promise<Buffer> {
   const zip = await JSZip.loadAsync(templateBuffer)
   const docFile = zip.file('word/document.xml')
@@ -209,8 +425,40 @@ async function fillTemplate(
 
   let xml = await docFile.async('string')
 
+  // 1. Standard text replacements
   for (const [paraId, text] of Object.entries(values)) {
     xml = replaceParaText(xml, paraId, text)
+  }
+
+  // 2. Multi-hook: rename "HOOK" → "HOOK 1" and inject Hook 2, 3, …
+  if (extraHooks && extraHooks.length > 0) {
+    xml = replaceParaText(xml, PARA.HOOK_LABEL, 'HOOK 1')
+
+    const injected = extraHooks
+      .map((text, i) => buildExtraHookXml(i + 2, text))
+      .join('')
+
+    // Inject after the first hook text paragraph (paraId 0000000C)
+    const hookTextParaRe = new RegExp(
+      `(<w:p\\b[^>]*w14:paraId="${PARA.HOOK_TEXT}"[^>]*>[\\s\\S]*?</w:p>)`,
+    )
+    xml = xml.replace(hookTextParaRe, `$1${injected}`)
+  }
+
+  // 3. Multi-CTA: rename "CTA" / "CALL TO ACTION" → "CTA 1" and inject CTA 2, 3, …
+  if (extraCtas && extraCtas.length > 0) {
+    // Attempt to rename the CTA label paragraph (may be a no-op if paraId doesn't exist)
+    xml = replaceParaText(xml, PARA.CTA_LABEL, 'CTA 1')
+
+    const injected = extraCtas
+      .map((text, i) => buildExtraCtaXml(i + 2, text))
+      .join('')
+
+    // Inject after the first CTA text paragraph (paraId 00000010)
+    const ctaTextParaRe = new RegExp(
+      `(<w:p\\b[^>]*w14:paraId="${PARA.CTA_TEXT}"[^>]*>[\\s\\S]*?</w:p>)`,
+    )
+    xml = xml.replace(ctaTextParaRe, `$1${injected}`)
   }
 
   zip.file('word/document.xml', xml)
@@ -227,18 +475,17 @@ async function fillTemplate(
 async function fetchTemplate(): Promise<Buffer | null> {
   const token = await getGraphToken()
 
-  // Find _Templates folder under Video Creatives parent
-  const templatesSearchRes = await fetch(
+  const templatesRes = await fetch(
     `https://graph.microsoft.com/v1.0/drives/${DRIVE_ID}/root:/${TEMPLATES_PATH}:/children`,
     { headers: { Authorization: `Bearer ${token}` } },
   )
 
-  if (!templatesSearchRes.ok) {
+  if (!templatesRes.ok) {
     console.warn('[campaign-brief-generator] _Templates folder not found, falling back to local template')
     return null
   }
 
-  const data = await templatesSearchRes.json() as { value: { name: string; id: string }[] }
+  const data = await templatesRes.json() as { value: { name: string; id: string }[] }
   const templateItem = data.value.find(f => f.name === TEMPLATE_FILENAME)
   if (!templateItem) {
     console.warn(`[campaign-brief-generator] ${TEMPLATE_FILENAME} not found in _Templates`)
@@ -319,13 +566,15 @@ export async function run(input: CampaignBriefInput): Promise<CampaignBriefOutpu
   // Build value map for template substitution
   const templateValues: Record<string, string> = {
     [PARA.AD_ID]:     adId,
-    [PARA.NUM_HOOKS]: String(script.numHooks),
-    [PARA.NUM_BODIES]:'1',
-    [PARA.NUM_CTAS]:  '1',
-    [PARA.HOOK_TEXT]: script.hookText,
-    [PARA.BODY_TEXT]: script.bodyText,
-    [PARA.CTA_TEXT]:  script.ctaText,
+    [PARA.NUM_HOOKS]: String(script.hooks.length),
+    [PARA.NUM_BODIES]:String(script.bodies.length),
+    [PARA.NUM_CTAS]:  String(script.ctas.length),
+    [PARA.HOOK_TEXT]: script.hooks[0]?.text  ?? '',
+    [PARA.BODY_TEXT]: script.bodies[0]?.text ?? '',
+    [PARA.CTA_TEXT]:  script.ctas[0]?.text   ?? '',
   }
+  const extraHooks = script.hooks.slice(1).map(h => h.text)
+  const extraCtas  = script.ctas.slice(1).map(c => c.text)
 
   // ── Dry run ───────────────────────────────────────────────────────────────
   if (dryRun) {
@@ -334,17 +583,26 @@ export async function run(input: CampaignBriefInput): Promise<CampaignBriefOutpu
     console.log('═'.repeat(60))
     console.log(`Concept:    ${conceptName}`)
     console.log(`Hook Type:  ${pipeline?.hook_type ?? '—'}`)
-    console.log(`Hooks:      ${script.numHooks}`)
+    console.log(`Hooks:      ${script.hooks.length}`)
+    console.log(`Bodies:     ${script.bodies.length}`)
+    console.log(`CTAs:       ${script.ctas.length}`)
     console.log(`Script:     ${matchedScript.matched_script_name} (${matchedScript.confidence}%)`)
-    console.log('\n── HOOK ─────────────────────────────────────────────')
-    console.log(script.hookText || '(empty)')
-    console.log('\n── BODY ─────────────────────────────────────────────')
-    console.log(script.bodyText || '(empty)')
-    console.log('\n── CTA ──────────────────────────────────────────────')
-    console.log(script.ctaText  || '(empty)')
-    console.log('═'.repeat(60))
 
-    // Fetch template (fall back to local copy for dry runs)
+    for (const [i, h] of script.hooks.entries()) {
+      console.log(`\n── ${h.label || `HOOK ${i + 1}`} ${'─'.repeat(Math.max(0, 47 - (h.label || '').length))}`)
+      console.log(h.text || '(empty)')
+    }
+    for (const b of script.bodies) {
+      console.log(`\n── ${b.label} ─────────────────────────────────────────────`)
+      console.log(b.text || '(empty)')
+    }
+    for (const [i, c] of script.ctas.entries()) {
+      console.log(`\n── ${c.label || `CTA ${i + 1}`} ${'─'.repeat(Math.max(0, 49 - (c.label || '').length))}`)
+      console.log(c.text || '(empty)')
+    }
+    console.log('\n' + '═'.repeat(60))
+
+    // Fetch template
     let templateBuffer: Buffer | null = null
     try { templateBuffer = await fetchTemplate() } catch { /* ignore */ }
 
@@ -357,11 +615,16 @@ export async function run(input: CampaignBriefInput): Promise<CampaignBriefOutpu
     }
 
     if (!templateBuffer) {
-      console.log('\n⚠️  No template available — skipping .docx generation')
+      console.log('\n⚠  No template available — skipping .docx generation')
       return { ad_id: adId, brief_url: null, status: 'dry_run' }
     }
 
-    const buffer  = await fillTemplate(templateBuffer, templateValues)
+    const buffer = await fillTemplate(
+      templateBuffer,
+      templateValues,
+      extraHooks.length > 0 ? extraHooks : undefined,
+      extraCtas.length  > 0 ? extraCtas  : undefined,
+    )
     const outDir  = path.join(process.cwd(), 'tmp')
     if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true })
     const outPath = path.join(outDir, filename)
@@ -374,14 +637,18 @@ export async function run(input: CampaignBriefInput): Promise<CampaignBriefOutpu
 
   // ── Live run ──────────────────────────────────────────────────────────────
 
-  // Fetch template from SharePoint
   const templateBuffer = await fetchTemplate()
   if (!templateBuffer) {
     console.error('[campaign-brief-generator] Cannot generate brief — template unavailable')
     return { ad_id: adId, brief_url: null, status: 'error', error: 'Template not found in SharePoint' }
   }
 
-  const buffer = await fillTemplate(templateBuffer, templateValues)
+  const buffer = await fillTemplate(
+    templateBuffer,
+    templateValues,
+    extraHooks.length > 0 ? extraHooks : undefined,
+    extraCtas.length  > 0 ? extraCtas  : undefined,
+  )
 
   // Find root concept folder in sharepoint_map (exclude subfolders)
   const { data: folderRow } = await supabase
@@ -453,7 +720,7 @@ export async function run(input: CampaignBriefInput): Promise<CampaignBriefOutpu
       type: 'section',
       fields: [
         { type: 'mrkdwn', text: `*Format*\n${pipeline?.hook_type ?? '—'}` },
-        { type: 'mrkdwn', text: `*Awareness Level*\n${pipeline?.awareness_level ?? '—'}` },
+        { type: 'mrkdwn', text: `*Hooks / Bodies / CTAs*\n${script.hooks.length} / ${script.bodies.length} / ${script.ctas.length}` },
       ],
     },
     {
@@ -485,7 +752,9 @@ export async function run(input: CampaignBriefInput): Promise<CampaignBriefOutpu
       brief_url:    briefUrl,
       script_match: matchedScript.matched_script_name,
       confidence:   matchedScript.confidence,
-      hooks_parsed: script.numHooks,
+      hooks_parsed: script.hooks.length,
+      bodies_parsed:script.bodies.length,
+      ctas_parsed:  script.ctas.length,
     },
   })
 

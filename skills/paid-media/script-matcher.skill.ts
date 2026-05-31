@@ -49,13 +49,13 @@ export interface ScriptMatcherOutput {
   errors:       string[]
 }
 
-interface ParsedScript {
+export interface ParsedScript {
   name:      string
   ad_id:     string | null
   full_text: string
 }
 
-interface MatchResult {
+export interface MatchResult {
   matched_script_name: string
   matched_ad_id:       string | null
   confidence:          number
@@ -77,7 +77,7 @@ async function getGoogleAccessToken(): Promise<string> {
 
   if (!clientId || !clientSecret || !refreshToken) {
     throw new Error(
-      'Google Docs auth not configured. ' +
+      'Google Docs OAuth not configured. ' +
       'Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REFRESH_TOKEN.',
     )
   }
@@ -117,7 +117,7 @@ function extractDocPlainText(content: DocTextElement[]): string {
   return lines.join('')
 }
 
-async function fetchDocScripts(): Promise<ParsedScript[]> {
+async function fetchDocScriptsViaOAuth(): Promise<ParsedScript[]> {
   const token = await getGoogleAccessToken()
   const res = await fetch(`https://docs.googleapis.com/v1/documents/${SCRIPTS_DOC_ID}`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -130,14 +130,122 @@ async function fetchDocScripts(): Promise<ParsedScript[]> {
   return parseScriptsFromText(rawText)
 }
 
+// ── Script loading with fallback ──────────────────────────────────────────────
+//
+// Load preference:
+//   1. OAuth (GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET + GOOGLE_REFRESH_TOKEN)
+//   2. Public export URL (works when the doc is publicly shared)
+//
+// Throws if both fail so callers can surface a clear error rather than
+// silently matching against zero scripts.
+
+export interface LoadScriptsResult {
+  scripts: ParsedScript[]
+  source:  'oauth' | 'public_export'
+}
+
+export async function loadScripts(): Promise<LoadScriptsResult> {
+  const hasOAuth =
+    !!process.env.GOOGLE_CLIENT_ID &&
+    !!process.env.GOOGLE_CLIENT_SECRET &&
+    !!process.env.GOOGLE_REFRESH_TOKEN
+
+  // 1. Try OAuth
+  if (hasOAuth) {
+    try {
+      const scripts = await fetchDocScriptsViaOAuth()
+      console.log(`[script-matcher] Loaded ${scripts.length} scripts via OAuth`)
+      return { scripts, source: 'oauth' }
+    } catch (err) {
+      console.warn(`[script-matcher] OAuth script fetch failed, trying public export: ${(err as Error).message}`)
+    }
+  }
+
+  // 2. Public export fallback — works when the doc is shared "Anyone with the link can view"
+  const publicUrl = `https://docs.google.com/document/d/${SCRIPTS_DOC_ID}/export?format=txt`
+  const res = await fetch(publicUrl)
+  if (!res.ok) {
+    throw new Error(
+      `Script loading failed completely. OAuth configured: ${hasOAuth}. ` +
+      `Public export returned ${res.status}. ` +
+      'Ensure the Ad Scripting doc is publicly shared, or configure OAuth env vars.',
+    )
+  }
+  const text = await res.text()
+  const scripts = parseScriptsFromText(text)
+  if (scripts.length === 0) {
+    throw new Error('Public export returned 0 scripts — doc may be empty or format unrecognized.')
+  }
+  console.log(`[script-matcher] Loaded ${scripts.length} scripts via public export`)
+  return { scripts, source: 'public_export' }
+}
+
 // Split the doc text into individual scripts.
-// Heuristic: sections separated by one or more blank lines; titled with a script name or AD number.
+// Google Docs plain-text export uses ________________ (16+ underscores) as section separators.
+// Block 0 is a preamble/TOC containing an AD-ID→script-name cross-reference table.
 function parseScriptsFromText(text: string): ParsedScript[] {
+  const HR = /^_{16,}\s*$/m
+
+  // Fast path: if no horizontal-rule separators exist, fall back to blank-line heuristic
+  if (!HR.test(text)) {
+    return parseScriptsFromTextLegacy(text)
+  }
+
+  const blocks = text.split(HR).map(b => b.trim()).filter(Boolean)
+
+  // ── Build AD-ID map from preamble (block 0) ───────────────────────────────
+  // Preamble format:
+  //   N. FSIQ-VIDEO-AD-XX | ... (lines under "Top Performing Videos")
+  //   Matching to:
+  //   N. Script Title (lines following "Matching to:")
+  const adIdByScriptName = new Map<string, string>()
+  if (blocks.length > 0) {
+    const preamble = blocks[0]
+    const adEntries: Array<{ pos: number; adId: string }> = []
+    for (const line of preamble.split('\n')) {
+      const m = line.match(/^\s*(\d+)\.\s+(FSIQ-VIDEO-AD-\d+[a-z]?)\b/i)
+      if (m) adEntries.push({ pos: parseInt(m[1], 10), adId: m[2].toUpperCase() })
+    }
+    // Parse "Matching to:" section
+    const matchingToIdx = preamble.search(/^Matching to:/im)
+    if (matchingToIdx !== -1) {
+      const matchingLines = preamble.slice(matchingToIdx).split('\n').slice(1)
+      for (const line of matchingLines) {
+        const m = line.match(/^\s*(\d+)\.\s+(.+)/)
+        if (!m) continue
+        const pos   = parseInt(m[1], 10)
+        const title = m[2].trim()
+        const entry = adEntries.find(e => e.pos === pos)
+        if (entry) adIdByScriptName.set(title.toLowerCase(), entry.adId)
+      }
+    }
+  }
+
+  // ── Parse blocks 1..N as individual scripts ───────────────────────────────
   const scripts: ParsedScript[] = []
+  for (const block of blocks.slice(1)) {
+    if (block.length < 20) continue
+    const firstLine = block.split('\n').find(l => l.trim().length > 0) ?? ''
+    const name      = firstLine.trim().slice(0, 120)
+    // Prefer explicit FSIQ-VIDEO-AD-XX mention in block, then preamble map lookup
+    const inlineM   = block.match(/\bFSIQ-VIDEO-AD-(\d+[a-z]?)\b/i)
+    const adId      = inlineM
+      ? `FSIQ-VIDEO-AD-${inlineM[1].toUpperCase()}`
+      : (adIdByScriptName.get(name.toLowerCase()) ?? null)
+    scripts.push({ name, ad_id: adId, full_text: block })
+  }
 
-  // Split on double newlines (section breaks)
+  if (scripts.length === 0 && text.trim()) {
+    scripts.push({ name: 'Full Ad Scripting Document', ad_id: null, full_text: text.trim() })
+  }
+
+  return scripts
+}
+
+// Legacy fallback used when no horizontal-rule separators are found.
+function parseScriptsFromTextLegacy(text: string): ParsedScript[] {
+  const scripts: ParsedScript[] = []
   const sections = text.split(/\n{2,}/).map(s => s.trim()).filter(Boolean)
-
   let currentName   = ''
   let currentAdId: string | null = null
   let currentLines: string[] = []
@@ -166,7 +274,6 @@ function parseScriptsFromText(text: string): ParsedScript[] {
       currentLines = [section]
     } else {
       currentLines.push(section)
-      // If we haven't started a named section yet, treat each section as its own script
       if (!currentName) {
         currentName = section.split('\n')[0].slice(0, 80)
         flushScript()
@@ -176,7 +283,6 @@ function parseScriptsFromText(text: string): ParsedScript[] {
   }
   flushScript()
 
-  // Fallback: if parsing found nothing, return whole doc as one script
   if (scripts.length === 0 && text.trim()) {
     scripts.push({ name: 'Full Ad Scripting Document', ad_id: null, full_text: text.trim() })
   }
@@ -209,6 +315,23 @@ function parseVtt(content: string): string {
 // Requires MediaContent.Read.All application permission in Azure AD.
 // Without it, the beta endpoint returns 400 "Unsupported segment type".
 // Returns null if transcript not available yet.
+
+export interface FetchTranscriptResult {
+  transcript: string | null
+  source:     'stream' | 'missing' | 'error'
+  error?:     string
+}
+
+export async function fetchTranscriptForSharePointItem(
+  itemId: string,
+): Promise<FetchTranscriptResult> {
+  try {
+    const transcript = await fetchTranscript(itemId)
+    return { transcript, source: transcript ? 'stream' : 'missing' }
+  } catch (err) {
+    return { transcript: null, source: 'error', error: (err as Error).message }
+  }
+}
 
 async function fetchTranscript(itemId: string): Promise<string | null> {
   const token = await getGraphToken()
@@ -261,12 +384,12 @@ async function fetchTranscript(itemId: string): Promise<string | null> {
 
 // ── Claude semantic match ─────────────────────────────────────────────────────
 
-async function matchTranscriptToScript(
+export async function matchTranscriptToScript(
   transcript: string,
   scripts: ParsedScript[],
 ): Promise<MatchResult> {
   const scriptList = scripts
-    .map((s, i) => `[${i + 1}] ${s.name}\n${s.full_text.slice(0, 600)}`)
+    .map((s, i) => `[Script-${i + 1}] ${s.name}\n${s.full_text.slice(0, 1000)}`)
     .join('\n\n---\n\n')
 
   const prompt = `You are matching a raw video transcript to a known FSIQ ad script.
@@ -299,7 +422,18 @@ Return JSON only, no preamble:
   "reasoning": "<one sentence explaining the match>"
 }`
 
-  return askClaudeJson<MatchResult>(prompt, 1024)
+  const result = await askClaudeJson<MatchResult>(prompt, 1024)
+
+  // Resolve ad_id from our parsed scripts by name — always override Claude's inference.
+  // Claude sees [Script-N] indices and confuses them with AD numbers (e.g. Script-18 → AD-18).
+  const matched = scripts.find(
+    s => s.name.toLowerCase().trim() === (result.matched_script_name ?? '').toLowerCase().trim(),
+  )
+  if (matched) {
+    result.matched_ad_id = matched.ad_id  // null is correct when the doc has no AD-XX label
+  }
+
+  return result
 }
 
 // ── Core processor ────────────────────────────────────────────────────────────
@@ -530,8 +664,9 @@ export async function run(input: ScriptMatcherInput = {}): Promise<ScriptMatcher
   // Fetch scripts once, reuse for all footage
   let scripts: ParsedScript[] = []
   try {
-    scripts = await fetchDocScripts()
-    console.log(`[script-matcher] Loaded ${scripts.length} scripts from Google Doc`)
+    const result = await loadScripts()
+    scripts = result.scripts
+    console.log(`[script-matcher] Loaded ${scripts.length} scripts (source: ${result.source})`)
   } catch (err) {
     const msg = `Failed to fetch Ad Scripting doc: ${(err as Error).message}`
     console.error('[script-matcher]', msg)

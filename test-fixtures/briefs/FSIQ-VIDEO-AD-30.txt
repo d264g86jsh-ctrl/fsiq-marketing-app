@@ -1,0 +1,27 @@
+# FSIQ-VIDEO-AD-30 — Media Pouch V2
+# Source: Ad Scripting Doc — "Podcast — 2/25/26" hooks + "Media Pouch V2 — 3/25/26" body/CTAs
+# Expected structure: 13 hooks, 1 body, 2 CTAs
+# Ad ID: FSIQ-VIDEO-AD-30
+# Date: 3/25/26
+
+HOOKS
+Hook 1: I actually just got this data from our operations team: because the restaurant owners we work with save 5-7% on their annual food costs, it turns out that they also open an average of 1.2 new restaurants while working with us.
+Hook 1.1: In many cases with our larger restaurant clients, we're adding hundreds of thousands of dollars per year to their bottom line. We've seen that 5-7% savings on their annual food costs have a massive impact on their business.
+Hook 2: Even with some of the larger independent restaurant groups that spend up to $20M per year on food, we've still been able to help them save an average of 5-7% on their annual food costs…
+Hook 3: Yeah, so for example we recently worked with the owner of MaryAnn's Diner, a 5-unit diner chain who had been in business for over two decades…and…we saved him over $270,000 on his annual food costs.
+Hook 4: One of the restaurant groups we work with spends over $15M per year on food, and we were still able to come in and save them close to 4 percent on their annual food costs.
+Hook 5: So we started in 2010, and since then we've helped over 2,000 independent restaurants save 5-7% on their annual food costs…
+Hook 6: I think at this point our team has helped around 2,000 independent restaurants reduce their food costs over the last 20 years. Our average client generally saves between 5 and 7% annually…
+Hook 6A: At this point, we've worked with many of the largest independent restaurant groups in the country and in almost all cases we've been able to save them between 4-6% on their annual food costs. It really wasn't until recently that we even started working with restaurants with less than $20M in annual revenue.
+Hook 7: There are certain independent restaurants we're not a fit for, but generally for groups doing over $3M in annual revenue, we've been pretty successful in helping reduce their food costs by 5 to 7%.
+Hook 8: To be clear, I'm NOT and have never been a restaurant owner, but FoodServiceIQ is very well known in the restaurant space at this point, and since 2010, we've worked with over 2,000 independent restaurants and helped many of them save at least $100,000 or more annually on their food costs…
+Hook 9: Some of our best success stories have been with restaurant owners who thought their food costs were already dialed in. Since 2010, we've helped over 2,000 independent restaurants save 5-7% on their annual food costs.
+Hook 10: And to be clear, I'm NOT a restaurant owner, but…because of the way our process works, we've been able to help over 2,000 restaurants save 5-7% on their annual food costs.
+Hook 11: Look, I'm NOT a restaurant owner but, we've been in the industry for more than 2 decades, and at this point we've saved over 2,000 restaurants about 6% on their annual food costs.
+
+BODY
+So if you are curious how we've achieved these savings, my team put together a completely free, 200-page playbook that shows the exact strategies we've used to give over 2,000 restaurants the same pricing and purchasing strategies as national chains. There's also a few free case studies included of specific restaurants we've worked with who have each saved anywhere between $100 thousand to $550 thousand dollars per year on food costs without any changes to ingredients or suppliers. There's no strings attached and this is really just a way for our team to help bring value to your restaurant, so yeah, check it out!
+
+CTAs
+CTA 1 (Book a Call): So if that sounds at all interesting to you, check out the link below to download our completely free food cost reduction playbook where you can see exactly how 2,000 other restaurants have saved 5-7% on their annual food costs, with no changes to ingredients or distributors.
+CTA 2 (Case Study): So if that sounds at all interesting to you, click the link below, we have a free case study showing exactly how we saved one of our clients $264,000 per year on their food costs with literally no changes to ingredients or suppliers. So, yeah, check it out.

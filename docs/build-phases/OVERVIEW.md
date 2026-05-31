@@ -1,5 +1,7 @@
 # FSIQ Marketing OS — Build Phases
 
+> **Living handoff log:** See [PROJECT-PROGRESS.md](./PROJECT-PROGRESS.md) for the current build phase, recent changes, known incomplete areas, and the next intended task. Check this file before reviewing or continuing work.
+
 ## Dashboard Architecture Principle
 
 Every skill has two outputs:
@@ -41,3 +43,44 @@ Skills post to Slack **inline** (immediately after writing to Supabase) and save
 | #organic-agent | /organic |
 | #morning-brief | /inbox (CMO view) |
 | #assistant | /settings (system health section) |
+
+## Dashboard pattern
+
+Every skill writes structured output to Supabase using consistent field names. Dashboard pages use Supabase realtime subscriptions to show live updates without polling.
+
+**No skill needs to know about the dashboard.** It writes clean data to Supabase; the dashboard reads it.
+
+## Supabase → Dashboard source map
+
+### /paid-media
+
+| Section | Table | Query |
+|---------|-------|-------|
+| Recommendations | `recommendations` | `WHERE agent='paid-media' ORDER BY created_at DESC` |
+| Performance | `ad_performance` | all rows, order by `cp2ql_7d ASC` |
+| Creative Pipeline | `creative_pipeline` | all rows, filter by status |
+| Inspiration Feed | `inspiration_catalog` | `WHERE used=false ORDER BY delivery_start_time DESC` |
+| Script Concepts | `creative_pipeline` | `WHERE script_draft IS NOT NULL AND status='In Progress'` |
+| System Health | `skill_runs` | `WHERE skill IN ('pixel-monitor','app-health-monitor','supabase-accuracy-audit')` |
+
+### /seo
+| Section | Table | Query |
+|---------|-------|-------|
+| Keyword Rankings | `seo_content` | `WHERE type='rank'` |
+| Blog Pipeline | `seo_content` | `WHERE type='blog_draft'` |
+| GMB Suggestions | `recommendations` | `WHERE agent='seo' AND skill='gmb-manager'` |
+| Technical Health | `skill_runs` | `WHERE skill='technical-audit'` |
+
+### /organic
+| Section | Table | Query |
+|---------|-------|-------|
+| Content Calendar | `content_calendar` | all, order by `publish_date ASC` |
+| LinkedIn Drafts | `content_calendar` | `WHERE platform='linkedin' AND status='draft'` |
+| Content Ideas | `recommendations` | `WHERE agent='organic' AND skill='content-ideation'` |
+
+### /inbox (CMO)
+| Section | Table | Query |
+|---------|-------|-------|
+| All Pending | `recommendations` | `WHERE status='pending' ORDER BY created_at DESC` |
+| Daily Brief | `skill_runs` | `WHERE skill='morning-brief-compiler' LIMIT 1` |
+| Agent Health | `skill_runs` | latest per skill, all agents |
